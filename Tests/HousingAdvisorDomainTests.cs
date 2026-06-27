@@ -116,7 +116,7 @@ public static class HousingAdvisorDomainTests
         var output = new AdvisorTextRenderer().RenderFurnitureResult(result);
 
         AssertContains("Showing 1/2 groups, page 1/2", output);
-        AssertContains("Next: /housingadvisor page 2", output);
+        AssertContains("Next: /housingadvisor list 2", output);
     }
 
     private static void RendersEndOfResults()
@@ -141,7 +141,7 @@ public static class HousingAdvisorDomainTests
         var output = new AdvisorTextRenderer().RenderHelp();
 
         AssertContains("/housingadvisor list", output);
-        AssertContains("/housingadvisor page 2", output);
+        AssertContains("/housingadvisor list 2", output);
         AssertContains("/housingadvisor category Seating", output);
         AssertContains("/housingadvisor search chair", output);
         AssertContains("/housingadvisor hahelp", output);

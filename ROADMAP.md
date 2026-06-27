@@ -60,7 +60,7 @@ Status:
 
 - Implemented as `/housingadvisor hahelp` to avoid unknown Eco command-key collisions.
 - Implemented class-name display formatting, next-page hints, and end-of-results text.
-- Implemented summary browsing as `/housingadvisor list` and `/housingadvisor page <number>` because Eco routes root commands with sub-commands to automatic help.
+- Implemented summary browsing as `/housingadvisor list` and `/housingadvisor list <number>` because Eco routes root commands with sub-commands to automatic help.
 
 ## V0.4: Lightweight In-Game UI Probe
 

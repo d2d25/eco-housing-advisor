@@ -29,12 +29,6 @@ namespace EcoHousingAdvisor.Commands
             SendQuery(user, new HousingFurnitureQuery("summary", null, page < 1 ? 1 : page, PageSize), false);
         }
 
-        [ChatSubCommand("HousingAdvisor", "List one housing furniture summary page.", "page")]
-        public static void Page(User user, int page = 1)
-        {
-            SendQuery(user, new HousingFurnitureQuery("summary", null, page < 1 ? 1 : page, PageSize), false);
-        }
-
         [ChatSubCommand("HousingAdvisor", "List one housing furniture category.", "category")]
         public static void Category(User user, string name, int page = 1)
         {
