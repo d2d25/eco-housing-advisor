@@ -48,9 +48,10 @@ namespace Eco.Mods.TechTree
             try
             {
                 var snapshot = new EcoPropertyValueReader().Read(propertyValue);
+                var furniture = HousingAdvisorRuntime.GetSnapshot(false);
                 return new TooltipSection(
                     Localizer.DoStr("Eco Housing Advisor"),
-                    Localizer.NotLocalized(new AdvisorTextRenderer().RenderPropertyValue(snapshot)));
+                    Localizer.NotLocalized(new AdvisorTextRenderer().RenderPropertyValue(snapshot, furniture.Groups)));
             }
             catch (Exception exception)
             {

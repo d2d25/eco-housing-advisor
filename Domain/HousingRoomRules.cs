@@ -111,6 +111,40 @@ namespace EcoHousingAdvisor.Domain
             return string.Join(", ", rule.UsefulRooms);
         }
 
+        public static IReadOnlyList<string> CategoriesUsefulInRoom(string roomName)
+        {
+            if (string.IsNullOrWhiteSpace(roomName))
+            {
+                return Array.Empty<string>();
+            }
+
+            var normalized = NormalizeRoomName(roomName);
+            return Rules.Values
+                .Where(rule => !string.Equals(rule.Category, "Industrial", StringComparison.OrdinalIgnoreCase))
+                .Where(rule => rule.UsefulRooms.Any(room => string.Equals(room, normalized, StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(rule => rule.CanDefineRoom && string.Equals(rule.Category, normalized, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ThenBy(rule => rule.Category, StringComparer.OrdinalIgnoreCase)
+                .Select(rule => rule.Category)
+                .ToArray();
+        }
+
+        public static string NormalizeRoomName(string roomName)
+        {
+            if (string.IsNullOrWhiteSpace(roomName))
+            {
+                return null;
+            }
+
+            var cleaned = roomName.Trim();
+            if (cleaned.IndexOf("Bedroom", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Chambre", StringComparison.OrdinalIgnoreCase) >= 0) return "Bedroom";
+            if (cleaned.IndexOf("Kitchen", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Cuisine", StringComparison.OrdinalIgnoreCase) >= 0) return "Kitchen";
+            if (cleaned.IndexOf("Bathroom", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Salle de bain", StringComparison.OrdinalIgnoreCase) >= 0) return "Bathroom";
+            if (cleaned.IndexOf("Living Room", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("LivingRoom", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Salon", StringComparison.OrdinalIgnoreCase) >= 0) return "Living Room";
+            if (cleaned.IndexOf("Outdoor", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Exterieur", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Extérieur", StringComparison.OrdinalIgnoreCase) >= 0) return "Outdoor";
+            if (cleaned.IndexOf("Cultural", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Culture", StringComparison.OrdinalIgnoreCase) >= 0) return "Cultural";
+            return cleaned;
+        }
+
         private static HousingCategoryPlacement Primary(string category, string note)
         {
             return new HousingCategoryPlacement(category, true, false, category.SingleItemAsArray(), note);

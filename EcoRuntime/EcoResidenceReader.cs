@@ -126,15 +126,7 @@ namespace EcoHousingAdvisor.EcoRuntime
                 return null;
             }
 
-            var cleaned = value.Trim();
-            if (cleaned.IndexOf("Bedroom", StringComparison.OrdinalIgnoreCase) >= 0) return "Bedroom";
-            if (cleaned.IndexOf("Kitchen", StringComparison.OrdinalIgnoreCase) >= 0) return "Kitchen";
-            if (cleaned.IndexOf("Bathroom", StringComparison.OrdinalIgnoreCase) >= 0) return "Bathroom";
-            if (cleaned.IndexOf("Living Room", StringComparison.OrdinalIgnoreCase) >= 0) return "Living Room";
-            if (cleaned.IndexOf("LivingRoom", StringComparison.OrdinalIgnoreCase) >= 0) return "Living Room";
-            if (cleaned.IndexOf("Outdoor", StringComparison.OrdinalIgnoreCase) >= 0) return "Outdoor";
-            if (cleaned.IndexOf("Cultural", StringComparison.OrdinalIgnoreCase) >= 0) return "Cultural";
-            return cleaned;
+            return HousingRoomRules.NormalizeRoomName(value);
         }
 
         private static IEnumerable<object> FindRoomLikeObjects(object root)

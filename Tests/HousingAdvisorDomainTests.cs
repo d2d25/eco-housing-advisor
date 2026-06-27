@@ -23,6 +23,8 @@ public static class HousingAdvisorDomainTests
         SuggestsCraftHintsWhenNoStoreOfferExists();
         ReadsFakePropertyValueRooms();
         RendersPropertyValueTooltipSummary();
+        FindsUsefulCategoriesForFrenchRoomNames();
+        SuggestsPropertyAdditionsForWeakRooms();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
 
@@ -283,6 +285,47 @@ public static class HousingAdvisorDomainTests
         AssertContains("Advisor sees 1 residence rooms from PropertyValue.", output);
         AssertContains("- Bedroom: 8.4 XP/day", output);
         AssertContains("Total read: 21.2 XP/day", output);
+    }
+
+    private static void FindsUsefulCategoriesForFrenchRoomNames()
+    {
+        var salonCategories = HousingRoomRules.CategoriesUsefulInRoom("Salon");
+        AssertContains("Living Room", string.Join(", ", salonCategories));
+        AssertContains("Seating", string.Join(", ", salonCategories));
+        AssertContains("Decoration", string.Join(", ", salonCategories));
+
+        var bathroomCategories = HousingRoomRules.CategoriesUsefulInRoom("Salle de bain");
+        AssertContains("Bathroom", string.Join(", ", bathroomCategories));
+        AssertContains("Lighting", string.Join(", ", bathroomCategories));
+    }
+
+    private static void SuggestsPropertyAdditionsForWeakRooms()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            30,
+            [
+                new HousingPropertyRoomValue("Salon", "Salon", 6.3),
+                new HousingPropertyRoomValue("Cuisine", "Cuisine", 11.5),
+            ],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Hewn Chair", "Seating", 2, "Chair", 0.5),
+            Item("Big Painting", "Decoration", 5, "Painting", 0.5),
+            Item("Table Lamp", "Lighting", 3, "Lamp", 0.5),
+            Item("Small Couch", "Living Room", 4, "Couch", 0.5),
+        ]);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, 1, 3);
+        AssertEqual(1, advice.Rooms.Count, "advice room count");
+        AssertEqual("Salon", advice.Rooms[0].Room.RoomName, "weakest room");
+        AssertContains("Big Painting", advice.Rooms[0].Additions[0].Group.Items[0].DisplayName);
+
+        var output = new AdvisorTextRenderer().RenderPropertyValue(property, groups);
+        AssertContains("Buy/craft for Salon:", output);
+        AssertContains("Big Painting in Salon", output);
     }
 
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)

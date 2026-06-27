@@ -136,7 +136,7 @@ namespace EcoHousingAdvisor.Presentation
             return string.Join(Environment.NewLine, lines);
         }
 
-        public string RenderPropertyValue(HousingPropertyValueSnapshot snapshot)
+        public string RenderPropertyValue(HousingPropertyValueSnapshot snapshot, IReadOnlyList<HousingFurnitureGroup> groups = null)
         {
             var lines = new List<string>();
             if (snapshot.Rooms.Count > 0)
@@ -154,6 +154,26 @@ namespace EcoHousingAdvisor.Presentation
                         room.RoomName,
                         FormatNullable(room.Value)));
                 }
+
+                if (groups != null && groups.Count > 0)
+                {
+                    var advice = new HousingPropertyAdviceEngine().BuildAdvice(snapshot, groups, 2, 3);
+                    foreach (var roomAdvice in advice.Rooms)
+                    {
+                        lines.Add("Buy/craft for " + roomAdvice.Room.RoomName + ":");
+                        foreach (var addition in roomAdvice.Additions)
+                        {
+                            var firstItem = addition.Group.Items[0];
+                            lines.Add(string.Format(
+                                CultureInfo.InvariantCulture,
+                                "- {0} in {1}: +{2} base XP/day ({3})",
+                                firstItem.DisplayName,
+                                roomAdvice.Room.RoomName,
+                                HousingFurnitureFormatter.FormatBaseValue(addition.EstimatedGain),
+                                addition.Category));
+                        }
+                    }
+                }
             }
             else
             {
@@ -165,7 +185,7 @@ namespace EcoHousingAdvisor.Presentation
                 lines.Add("Total read: " + HousingFurnitureFormatter.FormatBaseValue(snapshot.TotalValue.Value) + " XP/day");
             }
 
-            lines.Add("Next useful commands: /housingadvisor suggest Seating, Lighting, Decoration");
+            lines.Add("Estimates ignore current duplicates/caps until the next mapping pass.");
             return string.Join(Environment.NewLine, lines);
         }
 
