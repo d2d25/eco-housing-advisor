@@ -17,6 +17,7 @@ public static class HousingAdvisorDomainTests
         RendersHelp();
         FormatsTooltipText();
         MapsSupportCategoriesToUsefulRooms();
+        RendersResidenceProbeWithTierCaps();
         SuggestsStoreOffersForCategory();
         SuggestsCraftHintsWhenNoStoreOfferExists();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
@@ -178,6 +179,24 @@ public static class HousingAdvisorDomainTests
 
         var industrial = HousingRoomRules.ForCategory("Industrial");
         AssertContains("avoid on residence", industrial.Note);
+    }
+
+    private static void RendersResidenceProbeWithTierCaps()
+    {
+        var snapshot = new HousingResidenceSnapshot(
+            "Ada",
+            [
+                new HousingRoomSnapshot("Bedroom", "Bedroom", 2, 8.4, 6, true, "fake"),
+            ],
+            ["Full residence room enumeration is not confirmed yet."],
+            DateTimeOffset.UtcNow);
+
+        var output = new AdvisorTextRenderer().RenderResidence(snapshot);
+
+        AssertContains("residence probe for Ada", output);
+        AssertContains("Bedroom: category Bedroom, tier 2, value 8.4, furniture 6, contained yes", output);
+        AssertContains("caps: soft 10, hard 20, diminishing 0.65", output);
+        AssertContains("Note: Full residence room enumeration is not confirmed yet.", output);
     }
 
     private static void SuggestsStoreOffersForCategory()

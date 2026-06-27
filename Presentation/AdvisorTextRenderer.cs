@@ -88,9 +88,52 @@ namespace EcoHousingAdvisor.Presentation
                 "/housingadvisor search chair - search furniture",
                 "/housingadvisor hadebug - cache/discovery debug",
                 "/housingadvisor harefresh - rebuild furniture cache",
+                "/housingadvisor haresidence - probe residence rooms, tiers, and caps",
                 "/housingadvisor uistatus - show UI probe status",
                 "/housingadvisor hahelp - show this help",
             });
+        }
+
+        public string RenderResidence(HousingResidenceSnapshot snapshot)
+        {
+            var lines = new List<string>
+            {
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Eco Housing Advisor: residence probe for {0}. Rooms seen: {1}.",
+                    snapshot.ResidenceName,
+                    snapshot.Rooms.Count),
+            };
+
+            foreach (var room in snapshot.Rooms)
+            {
+                var cap = HousingTierCaps.ForTier(room.Tier);
+                lines.Add(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "- {0}: category {1}, tier {2}, value {3}, furniture {4}, contained {5}",
+                    room.Name,
+                    room.Category,
+                    FormatNullable(room.Tier),
+                    FormatNullable(room.CurrentValue),
+                    room.FurnitureCount?.ToString(CultureInfo.InvariantCulture) ?? "?",
+                    room.Contained ? "yes" : "no"));
+
+                lines.Add(cap == null
+                    ? "  caps: unknown until room tier is confirmed"
+                    : string.Format(
+                        CultureInfo.InvariantCulture,
+                        "  caps: soft {0}, hard {1}, diminishing {2}",
+                        HousingFurnitureFormatter.FormatBaseValue(cap.SoftCap),
+                        HousingFurnitureFormatter.FormatBaseValue(cap.HardCap),
+                        HousingFurnitureFormatter.FormatMultiplier(cap.DiminishingReturnPercent)));
+            }
+
+            foreach (var warning in snapshot.Warnings)
+            {
+                lines.Add("Note: " + warning);
+            }
+
+            return string.Join(Environment.NewLine, lines);
         }
 
         public string RenderSuggestions(HousingSuggestionResult result)
@@ -204,6 +247,13 @@ namespace EcoHousingAdvisor.Presentation
             }
 
             return "Availability: not found in accessible shops; craft recipe unknown.";
+        }
+
+        private static string FormatNullable(double? value)
+        {
+            return value == null
+                ? "?"
+                : HousingFurnitureFormatter.FormatBaseValue(value.Value);
         }
     }
 }

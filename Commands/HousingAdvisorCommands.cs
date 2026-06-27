@@ -70,6 +70,12 @@ namespace EcoHousingAdvisor.Commands
             Send(user, "Eco Housing Advisor UI: furniture item tooltip probe is installed. Hover housing items to test.");
         }
 
+        [ChatSubCommand("HousingAdvisor", "Probe your residence rooms, tiers, and caps.", "haresidence")]
+        public static void Residence(User user)
+        {
+            Send(user, new AdvisorTextRenderer().RenderResidence(HousingAdvisorRuntime.GetResidence(user)));
+        }
+
         [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor help.", "hahelp")]
         public static void HaHelp(User user)
         {

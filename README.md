@@ -625,3 +625,17 @@ Runtime API uncertainty confirmed:
 
 - These rules are read from the server's vanilla `Mods/__core__/Systems/HousingValues.cs`.
 - A safe runtime API for reading all configured `RoomCategory` relationships from `Mods/UserCode` is not confirmed yet, so the domain layer contains a small documented copy for now.
+
+## V0.7 Notes
+
+V0.7 starts the residence probe:
+
+- `/housingadvisor haresidence` attempts to read the player's current room/residence context.
+- It reports room category, material tier if exposed, current value if exposed, furniture count if exposed, and the tier soft/hard caps from Eco's `HousingValues.cs`.
+- The command name uses `haresidence` because Eco 0.13 already has a command key named `residence`.
+- The first runtime reader is defensive and reflection-based. It prioritizes confirmed room data and adds notes when full residence room enumeration is not yet confirmed.
+
+Runtime API uncertainty confirmed:
+
+- Eco core exposes current room access through `user.UpdateRoom()` and `user.CurrentRoom`, as seen in `Mods/__core__/Commands/PaintingCommands.cs`.
+- Full residence/deed room enumeration still needs a confirmed stable API. V0.7 may report only the current confirmed room until that API is found.

@@ -32,6 +32,7 @@ V0.5 can:
 - show cheapest active shop offer when available;
 - show craft skill/crafter hints when no shop offer is found;
 - map support categories such as Seating, Decoration, and Lighting to useful room placements;
+- probe current residence/room context with `/housingadvisor haresidence`;
 - avoid Eco attribute construction errors after startup.
 
 ## V0.3: Polish The Data Browser
@@ -158,29 +159,42 @@ Acceptance:
 - `/housingadvisor suggest Lighting` and `/housingadvisor suggest Decoration` show useful room placement.
 - The README documents the runtime API uncertainty.
 
-## V0.7: Room Context Probe
+## V0.7: Residence Context Probe
 
-Purpose: detect enough player/room context to start recommendations.
+Purpose: detect enough player residence/room context to start recommendations.
 
 Tasks:
 
-- Add `/housingadvisor room`.
-- Detect the player's current room if Eco exposes it safely.
-- If room detection is not reliable, support manual room category:
-  - `/housingadvisor room Bedroom`
-  - `/housingadvisor room Kitchen`
-- Read placed world objects in the room if possible.
+- Add `/housingadvisor haresidence`.
+- Detect the player's residence/deed and its rooms if Eco exposes this safely.
+- Read each room category, material tier, current room value, and contained world objects if possible.
+- Use Eco's tier caps from `HousingValues.cs`:
+  - tier 0: soft 2, hard 4;
+  - tier 1: soft 5, hard 10;
+  - tier 2: soft 10, hard 20;
+  - tier 3: soft 15, hard 30;
+  - tier 4: soft 20, hard 40;
+  - tier 5: soft 25, hard 50.
+- Keep current-room probing as a fallback when full residence enumeration is not confirmed.
 - Print:
-  - detected/manual room category;
-  - current furniture count seen by the advisor;
-  - matching candidate furniture categories.
+  - detected room category;
+  - tier and soft/hard cap;
+  - current room value;
+  - current furniture count seen by the advisor.
 - Document any runtime API uncertainty.
 
 Acceptance:
 
-- Tester standing in a room can run `/housingadvisor room`.
-- If auto-detect fails, manual mode still works.
+- Tester standing in a room can run `/housingadvisor haresidence`.
+- The server starts without command-key collisions.
+- If full residence enumeration is not available yet, the output says that clearly.
 - No recommendation math yet beyond matching categories.
+
+Status:
+
+- Implemented `/housingadvisor haresidence` as a defensive runtime probe.
+- Confirmed `residence` collides with an existing Eco command key, so the safe command name is `haresidence`.
+- Current slice reports confirmed room data first and notes that full residence enumeration still needs a stable API.
 
 ## V0.8: First Recommendation Slice
 

@@ -9,6 +9,7 @@ namespace EcoHousingAdvisor.EcoRuntime
             new EcoFurnitureReader(),
             new HousingFurnitureGrouper());
         private static readonly EcoAvailabilityReader AvailabilityReader = new EcoAvailabilityReader();
+        private static readonly EcoResidenceReader ResidenceReader = new EcoResidenceReader();
 
         public static HousingFurnitureSnapshot GetSnapshot(bool refresh)
         {
@@ -18,6 +19,11 @@ namespace EcoHousingAdvisor.EcoRuntime
         public static HousingAvailabilitySnapshot GetAvailability(User user, HousingFurnitureSnapshot snapshot)
         {
             return AvailabilityReader.ReadAvailability(user, snapshot.Furniture);
+        }
+
+        public static HousingResidenceSnapshot GetResidence(User user)
+        {
+            return ResidenceReader.ReadResidence(user);
         }
     }
 }
