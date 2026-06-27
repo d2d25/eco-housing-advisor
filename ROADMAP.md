@@ -18,7 +18,7 @@ Chat is only the development and fallback interface. The final user experience s
 
 ## Current State
 
-V0.4 can:
+V0.5 can:
 
 - register `/housingadvisor`;
 - list furniture groups from Eco runtime `HomeValue`;
@@ -28,6 +28,9 @@ V0.4 can:
 - refresh cache with `/housingadvisor harefresh`;
 - show `/housingadvisor uistatus`;
 - add a lightweight furniture tooltip probe based on OpenNutriView's tooltip-library pattern;
+- suggest best additions for a housing category with `/housingadvisor suggest Seating`;
+- show cheapest active shop offer when available;
+- show craft skill/crafter hints when no shop offer is found;
 - avoid Eco attribute construction errors after startup.
 
 ## V0.3: Polish The Data Browser
@@ -124,6 +127,14 @@ Acceptance:
 - `/housingadvisor hadebug` tells us if discovery is incomplete.
 - Runtime discovery does not throw on repeated calls.
 - Known items like chairs, tables, lamps, rugs, and toilets appear.
+
+Status:
+
+- Partially implemented as a player-useful suggestion slice instead of more raw debug output.
+- Added `/housingadvisor suggest <category>` with store/craft availability.
+- Store reading follows OpenNutriView's active-store scan.
+- Craft hints follow Eco core `CraftingComponent.RecipesForItem(...)`.
+- Per-player store authorization still needs confirmed `AccessType` namespace in `Mods/UserCode`.
 
 ## V0.6: Economy Viewer Spreadsheet Probe
 

@@ -81,6 +81,7 @@ namespace EcoHousingAdvisor.Presentation
             return string.Join(Environment.NewLine, new[]
             {
                 "Eco Housing Advisor commands:",
+                "/housingadvisor suggest Seating - what to buy/craft for a category",
                 "/housingadvisor list - first summary page",
                 "/housingadvisor list 2 - summary page 2",
                 "/housingadvisor category Seating - filter one category",
@@ -90,6 +91,53 @@ namespace EcoHousingAdvisor.Presentation
                 "/housingadvisor uistatus - show UI probe status",
                 "/housingadvisor hahelp - show this help",
             });
+        }
+
+        public string RenderSuggestions(HousingSuggestionResult result)
+        {
+            if (result.Suggestions.Count == 0)
+            {
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Eco Housing Advisor: no suggestions for category '{0}'.",
+                    result.Category);
+            }
+
+            var lines = new List<string>
+            {
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Eco Housing Advisor: best additions for {0}. Showing {1}/{2}, page {3}/{4}.",
+                    result.Category,
+                    result.Suggestions.Count,
+                    result.TotalMatches,
+                    result.Page,
+                    result.PageCount),
+            };
+
+            var index = 1;
+            foreach (var suggestion in result.Suggestions)
+            {
+                var firstItem = suggestion.Group.Items[0];
+                lines.Add(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0}. {1}: +{2} XP/day est., put in {3}, type {4}",
+                    index++,
+                    firstItem.DisplayName,
+                    HousingFurnitureFormatter.FormatBaseValue(suggestion.EstimatedGain),
+                    suggestion.Group.Category,
+                    suggestion.Group.TypeForRoomLimit));
+                lines.Add("   " + FormatAvailability(suggestion.Availability));
+            }
+
+            if (result.PageCount > 1)
+            {
+                lines.Add(result.Page >= result.PageCount
+                    ? "End of suggestions."
+                    : string.Format(CultureInfo.InvariantCulture, "Next: /housingadvisor suggest {0} {1}", result.Category, result.Page + 1));
+            }
+
+            return string.Join(Environment.NewLine, lines);
         }
 
         private static void AddGroupLines(List<string> lines, IReadOnlyList<HousingFurnitureGroup> groups)
@@ -126,6 +174,36 @@ namespace EcoHousingAdvisor.Presentation
             }
 
             return "Next: /housingadvisor list " + nextPage.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static string FormatAvailability(HousingItemAvailability availability)
+        {
+            if (availability.StoreOffers.Count > 0)
+            {
+                var offer = availability.StoreOffers[0];
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Buy: {0} {1} at {2} ({3} in stock, seller {4})",
+                    HousingFurnitureFormatter.FormatBaseValue(offer.Price),
+                    offer.Currency,
+                    offer.StoreName,
+                    HousingFurnitureFormatter.FormatBaseValue(offer.Quantity),
+                    offer.SellerName);
+            }
+
+            if (availability.CraftHints.Count > 0)
+            {
+                var craft = availability.CraftHints[0];
+                var crafters = craft.Crafters.Count == 0 ? "no known crafter found" : string.Join(", ", craft.Crafters);
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Craft: {0} level {1}; crafters: {2}",
+                    craft.SkillName,
+                    craft.RequiredLevel,
+                    crafters);
+            }
+
+            return "Availability: not found in accessible shops; craft recipe unknown.";
         }
     }
 }

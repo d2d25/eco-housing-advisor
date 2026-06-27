@@ -38,6 +38,20 @@ namespace EcoHousingAdvisor.Commands
             SendQuery(user, new HousingFurnitureQuery("search", text, page, PageSize), false);
         }
 
+        [ChatSubCommand("HousingAdvisor", "Suggest housing additions to buy or craft for one category.", "suggest")]
+        public static void Suggest(User user, string category, int page = 1)
+        {
+            var snapshot = HousingAdvisorRuntime.GetSnapshot(false);
+            var availability = HousingAdvisorRuntime.GetAvailability(user, snapshot);
+            var result = new HousingSuggestionEngine().SuggestByCategory(
+                snapshot.Groups,
+                availability,
+                category,
+                page,
+                5);
+            Send(user, new AdvisorTextRenderer().RenderSuggestions(result));
+        }
+
         [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor discovery debug information.", "hadebug")]
         public static void HaDebug(User user)
         {

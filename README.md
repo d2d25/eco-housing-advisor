@@ -589,3 +589,23 @@ V0.4 adds the first in-game UI probe, based on OpenNutriView's tooltip-library p
 Runtime API uncertainty confirmed:
 
 - The advanced tooltip signature using `TooltipOrigin` and `CacheAs.SubType` works in Eco core tooltip libraries, but did not compile from this server's `Mods/UserCode` context. V0.4 therefore uses the simpler OpenNutriView-style tooltip signature.
+
+## V0.5 Notes
+
+V0.5 starts shifting from raw furniture data to player-useful advice:
+
+- `/housingadvisor suggest Seating` ranks useful additions for one housing category.
+- Suggestions show:
+  - estimated XP/day gain, currently the item's base housing value until room/duplicate/tier context is implemented;
+  - where the object belongs, using Eco's housing category;
+  - the type limit;
+  - the cheapest matching shop offer found in active stores;
+  - if no shop offer is found, the first craft skill hint and known citizens with that skill.
+- Store scanning is based on OpenNutriView's `WorldObjectUtil.AllObjsWithComponent<StoreComponent>()` approach.
+- Craft hints use `CraftingComponent.RecipesForItem(...)` and recipe `RequiredSkills`, following the Eco core tech tree command pattern.
+
+Runtime API uncertainty confirmed:
+
+- The `AccessType.ConsumerAccess` authorization enum used by OpenNutriView did not compile from this server's `Mods/UserCode` context. V0.5 therefore scans enabled stores first; per-player store authorization needs a confirmed namespace/type before being re-enabled.
+- Crafter detection reads `UserManager.Users` and `user.Skillset.Skills` best-effort. If Eco exposes skill levels differently on a server, suggestions will still show the required craft skill but may not list all possible crafters yet.
+- Suggested gain is explicitly an estimate. Real gain still needs room detection, current placed furniture, duplicate penalties, and material tier caps.

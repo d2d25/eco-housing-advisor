@@ -16,6 +16,8 @@ public static class HousingAdvisorDomainTests
         RendersEndOfResults();
         RendersHelp();
         FormatsTooltipText();
+        SuggestsStoreOffersForCategory();
+        SuggestsCraftHintsWhenNoStoreOfferExists();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
 
@@ -156,6 +158,52 @@ public static class HousingAdvisorDomainTests
         AssertContains("Base value: 2", output);
         AssertContains("Type limit: Chair", output);
         AssertContains("Duplicate multiplier: 0.5", output);
+    }
+
+    private static void SuggestsStoreOffersForCategory()
+    {
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Hewn Chair", "Seating", 1, "Chair", 0.7),
+            Item("Fancy Chair", "Seating", 3, "Chair", 0.5),
+        ]);
+        var availability = new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>
+        {
+            ["FancyChairItem"] = new HousingItemAvailability(
+                "FancyChairItem",
+                [new HousingStoreOffer("Best Furniture", "Ada", 12, "Credits", 4)],
+                []),
+        });
+
+        var result = new HousingSuggestionEngine().SuggestByCategory(groups, availability, "Seating", 1, 5);
+        var output = new AdvisorTextRenderer().RenderSuggestions(result);
+
+        AssertContains("best additions for Seating", output);
+        AssertContains("Fancy Chair", output);
+        AssertContains("+3 XP/day est.", output);
+        AssertContains("Buy: 12 Credits at Best Furniture", output);
+        AssertContains("seller Ada", output);
+    }
+
+    private static void SuggestsCraftHintsWhenNoStoreOfferExists()
+    {
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Hewn Chair", "Seating", 1, "Chair", 0.7),
+        ]);
+        var availability = new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>
+        {
+            ["HewnChairItem"] = new HousingItemAvailability(
+                "HewnChairItem",
+                [],
+                [new HousingCraftHint("Logging", 1, ["Ada", "Ben"])]),
+        });
+
+        var result = new HousingSuggestionEngine().SuggestByCategory(groups, availability, "Seating", 1, 5);
+        var output = new AdvisorTextRenderer().RenderSuggestions(result);
+
+        AssertContains("Hewn Chair", output);
+        AssertContains("Craft: Logging level 1; crafters: Ada, Ben", output);
     }
 
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)
