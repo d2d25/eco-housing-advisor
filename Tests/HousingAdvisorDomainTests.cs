@@ -172,6 +172,10 @@ public static class HousingAdvisorDomainTests
         AssertEqual(true, lighting.SupportForAnyRoom, "lighting any-room support");
         AssertContains("Kitchen", HousingRoomRules.FormatUsefulRooms("Lighting"));
 
+        AssertContains("Bedroom", HousingRoomRules.FormatUsefulRooms("Living Room"));
+        AssertContains("Living Room", HousingRoomRules.FormatUsefulRooms("Cultural"));
+        AssertContains("Outdoor", HousingRoomRules.FormatUsefulRooms("Cultural"));
+
         var industrial = HousingRoomRules.ForCategory("Industrial");
         AssertContains("avoid on residence", industrial.Note);
     }

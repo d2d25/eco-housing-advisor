@@ -33,19 +33,25 @@ namespace EcoHousingAdvisor.Domain
 
     public static class HousingRoomRules
     {
-        private static readonly string[] ResidencePrimaryRooms =
+        private static readonly string[] NonIndustrialRooms =
         {
             "Living Room",
             "Bedroom",
             "Kitchen",
             "Bathroom",
             "Outdoor",
+            "Cultural",
         };
 
         private static readonly Dictionary<string, HousingCategoryPlacement> Rules =
             new Dictionary<string, HousingCategoryPlacement>(StringComparer.OrdinalIgnoreCase)
             {
-                ["Living Room"] = Primary("Living Room", "defines a residence living room; also supports bedrooms"),
+                ["Living Room"] = new HousingCategoryPlacement(
+                    "Living Room",
+                    true,
+                    false,
+                    new[] { "Living Room", "Bedroom" },
+                    "defines a living room and is accepted as bedroom support"),
                 ["Bedroom"] = Primary("Bedroom", "defines a residence bedroom"),
                 ["Kitchen"] = Primary("Kitchen", "defines a residence kitchen"),
                 ["Bathroom"] = Primary("Bathroom", "defines a bathroom, capped against the rest of the property"),
@@ -54,8 +60,8 @@ namespace EcoHousingAdvisor.Domain
                     "Cultural",
                     true,
                     false,
-                    new[] { "Living Room", "Outdoor", "Cultural property" },
-                    "supports living/outdoor rooms and defines cultural-property value"),
+                    new[] { "Cultural", "Living Room", "Outdoor" },
+                    "defines cultural value and is accepted as living/outdoor support"),
                 ["Seating"] = new HousingCategoryPlacement(
                     "Seating",
                     false,
@@ -66,13 +72,13 @@ namespace EcoHousingAdvisor.Domain
                     "Decoration",
                     false,
                     true,
-                    ResidencePrimaryRooms,
+                    NonIndustrialRooms,
                     "support category for any room type"),
                 ["Lighting"] = new HousingCategoryPlacement(
                     "Lighting",
                     false,
                     true,
-                    ResidencePrimaryRooms,
+                    NonIndustrialRooms,
                     "support category for any room type"),
                 ["Industrial"] = new HousingCategoryPlacement(
                     "Industrial",
