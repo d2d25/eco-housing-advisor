@@ -18,7 +18,7 @@ Chat is only the development and fallback interface. The final user experience s
 
 ## Current State
 
-V0.2.3 can:
+V0.4 can:
 
 - register `/housingadvisor`;
 - list furniture groups from Eco runtime `HomeValue`;
@@ -26,6 +26,8 @@ V0.2.3 can:
 - search with `/housingadvisor search chair`;
 - show debug with `/housingadvisor hadebug`;
 - refresh cache with `/housingadvisor harefresh`;
+- show `/housingadvisor uistatus`;
+- add a lightweight furniture tooltip probe based on OpenNutriView's tooltip-library pattern;
 - avoid Eco attribute construction errors after startup.
 
 ## V0.3: Polish The Data Browser
@@ -92,6 +94,13 @@ Acceptance:
 - `/housingadvisor config` opens a small in-game config UI, or the README documents why it is blocked.
 - Furniture tooltip enrichment works without server startup errors, or is explicitly deferred.
 - The UI code stays separate from domain scoring logic.
+
+Status:
+
+- Implemented the furniture tooltip probe first, using the same simple `TooltipLibrary`/extension-method style as OpenNutriView.
+- Confirmed server startup succeeds with the probe installed.
+- Deferred config UI to the next UI slice so the tooltip can be tested in isolation.
+- Documented that the advanced `TooltipOrigin` signature did not compile from this server's `Mods/UserCode` context.
 
 ## V0.5: Runtime Discovery Hardening
 

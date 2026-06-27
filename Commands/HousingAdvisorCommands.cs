@@ -13,9 +13,6 @@ namespace EcoHousingAdvisor.Commands
     public static class HousingAdvisorCommands
     {
         private const int PageSize = 8;
-        private static readonly HousingFurnitureCache Cache = new HousingFurnitureCache(
-            new EcoFurnitureReader(),
-            new HousingFurnitureGrouper());
 
         [ChatCommand("List housing furniture values discovered from the Eco runtime.")]
         public static void HousingAdvisor(User user)
@@ -44,7 +41,7 @@ namespace EcoHousingAdvisor.Commands
         [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor discovery debug information.", "hadebug")]
         public static void HaDebug(User user)
         {
-            var snapshot = Cache.Get(false);
+            var snapshot = HousingAdvisorRuntime.GetSnapshot(false);
             Send(user, new AdvisorTextRenderer().RenderDebug(snapshot));
         }
 
@@ -52,6 +49,12 @@ namespace EcoHousingAdvisor.Commands
         public static void HaRefresh(User user)
         {
             SendQuery(user, new HousingFurnitureQuery("summary", null, 1, PageSize), true);
+        }
+
+        [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor UI status.", "uistatus")]
+        public static void UiStatus(User user)
+        {
+            Send(user, "Eco Housing Advisor UI: furniture item tooltip probe is installed. Hover housing items to test.");
         }
 
         [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor help.", "hahelp")]
@@ -62,7 +65,7 @@ namespace EcoHousingAdvisor.Commands
 
         private static void SendQuery(User user, HousingFurnitureQuery query, bool refresh)
         {
-            var snapshot = Cache.Get(refresh);
+            var snapshot = HousingAdvisorRuntime.GetSnapshot(refresh);
             var text = new AdvisorTextRenderer().RenderFurnitureResult(new HousingFurnitureBrowser().Query(snapshot.Groups, query));
             Send(user, text);
         }

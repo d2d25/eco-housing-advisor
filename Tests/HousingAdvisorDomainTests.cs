@@ -15,6 +15,7 @@ public static class HousingAdvisorDomainTests
         RendersCompactPagedOutput();
         RendersEndOfResults();
         RendersHelp();
+        FormatsTooltipText();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
 
@@ -145,6 +146,16 @@ public static class HousingAdvisorDomainTests
         AssertContains("/housingadvisor category Seating", output);
         AssertContains("/housingadvisor search chair", output);
         AssertContains("/housingadvisor hahelp", output);
+    }
+
+    private static void FormatsTooltipText()
+    {
+        var output = HousingFurnitureFormatter.FormatTooltip(Item("Hewn Chair", "Seating", 2, "Chair", 0.5));
+
+        AssertContains("Category: Seating", output);
+        AssertContains("Base value: 2", output);
+        AssertContains("Type limit: Chair", output);
+        AssertContains("Duplicate multiplier: 0.5", output);
     }
 
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)

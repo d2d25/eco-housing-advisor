@@ -87,6 +87,7 @@ namespace EcoHousingAdvisor.Presentation
                 "/housingadvisor search chair - search furniture",
                 "/housingadvisor hadebug - cache/discovery debug",
                 "/housingadvisor harefresh - rebuild furniture cache",
+                "/housingadvisor uistatus - show UI probe status",
                 "/housingadvisor hahelp - show this help",
             });
         }
@@ -103,16 +104,11 @@ namespace EcoHousingAdvisor.Presentation
                         CultureInfo.InvariantCulture,
                         "- {0}: base {1}, type limit {2}, duplicate multiplier {3}",
                         names,
-                        group.BaseValue.ToString("0.##", CultureInfo.InvariantCulture),
+                        HousingFurnitureFormatter.FormatBaseValue(group.BaseValue),
                         group.TypeForRoomLimit,
-                        FormatMultiplier(group.DiminishingReturnMultiplier)));
+                        HousingFurnitureFormatter.FormatMultiplier(group.DiminishingReturnMultiplier)));
                 }
             }
-        }
-
-        private static string FormatMultiplier(double? multiplier)
-        {
-            return multiplier is null ? "unknown" : multiplier.Value.ToString("0.##", CultureInfo.InvariantCulture);
         }
 
         private static string NextPageHint(HousingFurnitureQueryResult result)

@@ -572,3 +572,20 @@ Eco displays automatic help for root commands that have sub-commands, and treats
 
 - `/housingadvisor list`
 - `/housingadvisor list 2`
+
+## V0.4 Notes
+
+V0.4 adds the first in-game UI probe, based on OpenNutriView's tooltip-library pattern:
+
+- `/housingadvisor uistatus` confirms the UI probe is installed.
+- Housing furniture item tooltips are enriched with:
+  - category;
+  - base value;
+  - type limit;
+  - duplicate multiplier.
+- Tooltip generation uses `[TooltipLibrary]`, `[NewTooltip(CacheAs.Disabled, overrideType: typeof(Item))]`, and an extension method, matching OpenNutriView's simple `FoodItem` tooltip approach.
+- The cached furniture snapshot is now shared through `EcoRuntime/HousingAdvisorRuntime.cs`, so commands and UI do not each build their own cache.
+
+Runtime API uncertainty confirmed:
+
+- The advanced tooltip signature using `TooltipOrigin` and `CacheAs.SubType` works in Eco core tooltip libraries, but did not compile from this server's `Mods/UserCode` context. V0.4 therefore uses the simpler OpenNutriView-style tooltip signature.

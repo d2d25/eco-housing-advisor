@@ -13,6 +13,7 @@
 
   <ItemGroup Condition="'$(EcoHousingAdvisorTests)' != 'true'">
     <Compile Remove="Tests\**\*.cs" />
+    <Compile Remove="UI\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
