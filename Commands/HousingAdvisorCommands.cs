@@ -18,19 +18,9 @@ namespace EcoHousingAdvisor.Commands
             new HousingFurnitureGrouper());
 
         [ChatCommand("List housing furniture values discovered from the Eco runtime.")]
-        public static void HousingAdvisor(User user, string action = null)
+        public static void HousingAdvisor(User user, int page = 1)
         {
-            if (Is(action, "debug"))
-            {
-                var snapshot = Cache.Get(false);
-                Send(user, new AdvisorTextRenderer().RenderDebug(snapshot));
-                return;
-            }
-
-            var refresh = Is(action, "refresh");
-            var page = 1;
-            int.TryParse(action, out page);
-            SendQuery(user, new HousingFurnitureQuery("summary", null, page < 1 ? 1 : page, PageSize), refresh);
+            SendQuery(user, new HousingFurnitureQuery("summary", null, page < 1 ? 1 : page, PageSize), false);
         }
 
         [ChatSubCommand("HousingAdvisor", "List one housing furniture category.", "category")]
@@ -45,6 +35,19 @@ namespace EcoHousingAdvisor.Commands
             SendQuery(user, new HousingFurnitureQuery("search", text, page, PageSize), false);
         }
 
+        [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor discovery debug information.", "hadebug")]
+        public static void HaDebug(User user)
+        {
+            var snapshot = Cache.Get(false);
+            Send(user, new AdvisorTextRenderer().RenderDebug(snapshot));
+        }
+
+        [ChatSubCommand("HousingAdvisor", "Refresh the cached housing furniture snapshot.", "harefresh")]
+        public static void HaRefresh(User user)
+        {
+            SendQuery(user, new HousingFurnitureQuery("summary", null, 1, PageSize), true);
+        }
+
         private static void SendQuery(User user, HousingFurnitureQuery query, bool refresh)
         {
             var snapshot = Cache.Get(refresh);
@@ -55,11 +58,6 @@ namespace EcoHousingAdvisor.Commands
         private static void Send(User user, string text)
         {
             ChatManager.SendMessage(user, ChannelManager.Obj.Get(SpecialChannel.General), text);
-        }
-
-        private static bool Is(string actual, string expected)
-        {
-            return actual != null && actual.Equals(expected, System.StringComparison.OrdinalIgnoreCase);
         }
     }
 }

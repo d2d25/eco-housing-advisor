@@ -535,8 +535,8 @@ V0.2 adds a small browse layer over the V0 furniture snapshot:
 - `/housingadvisor <page>` shows a summary page.
 - `/housingadvisor category <name>` filters by housing category through an Eco sub-command.
 - `/housingadvisor search <text>` filters by category, type limit, item class, or display name through an Eco sub-command.
-- `/housingadvisor debug` shows snapshot counts and cache timestamp through the root command parser.
-- `/housingadvisor refresh` rebuilds the runtime furniture snapshot through the root command parser.
+- `/housingadvisor hadebug` shows snapshot counts and cache timestamp.
+- `/housingadvisor harefresh` rebuilds the runtime furniture snapshot.
 
 The runtime reader still avoids Eco attribute construction after server startup. It treats `WorldObjectItem.homeValue` / `HomeValue` as the source of truth and does not instantiate item display attributes. Display names are therefore currently safe class-name-based names until a side-effect-free Eco naming API is confirmed.
 
@@ -548,4 +548,8 @@ Eco 0.13 did not route multiple optional parameters on the root `/housingadvisor
 
 ## V0.2.2 Notes
 
-Eco 0.13 already has a command key named `debug`, so registering `debug` as a sub-command broke server startup. V0.2.2 keeps only `category` and `search` as sub-commands. `debug`, `refresh`, and page numbers are handled by the root `/housingadvisor` command.
+Eco 0.13 already has a command key named `debug`, so registering `debug` as a sub-command broke server startup. V0.2.2 kept only `category` and `search` as sub-commands.
+
+## V0.2.3 Notes
+
+Eco 0.13 treats unknown words after a root command as sub-command names before calling the root handler. That means `/housingadvisor debug` and `/housingadvisor refresh` cannot be parsed by the root command. V0.2.3 exposes the safe names `/housingadvisor hadebug` and `/housingadvisor harefresh`.
