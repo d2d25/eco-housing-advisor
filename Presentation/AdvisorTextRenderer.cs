@@ -81,8 +81,8 @@ namespace EcoHousingAdvisor.Presentation
             return string.Join(Environment.NewLine, new[]
             {
                 "Eco Housing Advisor commands:",
-                "/housingadvisor - first summary page",
-                "/housingadvisor 2 - summary page 2",
+                "/housingadvisor list - first summary page",
+                "/housingadvisor page 2 - summary page 2",
                 "/housingadvisor category Seating - filter one category",
                 "/housingadvisor search chair - search furniture",
                 "/housingadvisor hadebug - cache/discovery debug",
@@ -129,7 +129,7 @@ namespace EcoHousingAdvisor.Presentation
                 return string.Format(CultureInfo.InvariantCulture, "Next: /housingadvisor {0} {1} {2}", query.Mode, query.Text, nextPage);
             }
 
-            return "Next: /housingadvisor " + nextPage.ToString(CultureInfo.InvariantCulture);
+            return "Next: /housingadvisor page " + nextPage.ToString(CultureInfo.InvariantCulture);
         }
     }
 }

@@ -533,8 +533,8 @@ Out of scope for V0.2:
 
 V0.2 adds a small browse layer over the V0 furniture snapshot:
 
-- `/housingadvisor` shows a compact first page instead of printing every group.
-- `/housingadvisor <page>` shows a summary page.
+- `/housingadvisor list` shows a compact first page instead of printing every group.
+- `/housingadvisor page <number>` shows a summary page.
 - `/housingadvisor category <name>` filters by housing category through an Eco sub-command.
 - `/housingadvisor search <text>` filters by category, type limit, item class, or display name through an Eco sub-command.
 - `/housingadvisor hadebug` shows snapshot counts and cache timestamp.
@@ -565,3 +565,10 @@ V0.3 improves the data browser polish:
 - renders class-name display names as separated words;
 - shows `Next: ...` hints instead of raw page numbers;
 - shows `End of results.` on the last page.
+
+## V0.3.1 Notes
+
+Eco displays automatic help for root commands that have sub-commands, and treats `/housingadvisor 2` as an unknown sub-command. V0.3.1 adds explicit list paging:
+
+- `/housingadvisor list`
+- `/housingadvisor page 2`

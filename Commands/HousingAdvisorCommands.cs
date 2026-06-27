@@ -18,7 +18,19 @@ namespace EcoHousingAdvisor.Commands
             new HousingFurnitureGrouper());
 
         [ChatCommand("List housing furniture values discovered from the Eco runtime.")]
-        public static void HousingAdvisor(User user, int page = 1)
+        public static void HousingAdvisor(User user)
+        {
+            SendQuery(user, new HousingFurnitureQuery("summary", null, 1, PageSize), false);
+        }
+
+        [ChatSubCommand("HousingAdvisor", "List housing furniture summary.", "list")]
+        public static void List(User user, int page = 1)
+        {
+            SendQuery(user, new HousingFurnitureQuery("summary", null, page < 1 ? 1 : page, PageSize), false);
+        }
+
+        [ChatSubCommand("HousingAdvisor", "List one housing furniture summary page.", "page")]
+        public static void Page(User user, int page = 1)
         {
             SendQuery(user, new HousingFurnitureQuery("summary", null, page < 1 ? 1 : page, PageSize), false);
         }
