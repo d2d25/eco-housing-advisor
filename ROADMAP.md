@@ -56,6 +56,11 @@ Acceptance:
 - Search/category output is readable in chat.
 - No server restart/runtime errors.
 
+Status:
+
+- Implemented as `/housingadvisor hahelp` to avoid unknown Eco command-key collisions.
+- Implemented class-name display formatting, next-page hints, and end-of-results text.
+
 ## V0.4: Lightweight In-Game UI Probe
 
 Purpose: investigate and implement the first UI surface, inspired by OpenNutriView's tooltip/config approach.

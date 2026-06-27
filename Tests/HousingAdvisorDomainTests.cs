@@ -13,6 +13,8 @@ public static class HousingAdvisorDomainTests
         FiltersCategoryAndPaginates();
         SearchesFurnitureNames();
         RendersCompactPagedOutput();
+        RendersEndOfResults();
+        RendersHelp();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
 
@@ -114,7 +116,33 @@ public static class HousingAdvisorDomainTests
         var output = new AdvisorTextRenderer().RenderFurnitureResult(result);
 
         AssertContains("Showing 1/2 groups, page 1/2", output);
-        AssertContains("Use /housingadvisor 2", output);
+        AssertContains("Next: /housingadvisor 2", output);
+    }
+
+    private static void RendersEndOfResults()
+    {
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Hewn Chair", "Seating", 2, "Chair", 0.5),
+            Item("Wooden Table", "Seating", 1, "Table", 0.2),
+        ]);
+        var result = new HousingFurnitureBrowser().Query(
+            groups,
+            new HousingFurnitureQuery("summary", null, 2, 1));
+
+        var output = new AdvisorTextRenderer().RenderFurnitureResult(result);
+
+        AssertContains("Showing 1/2 groups, page 2/2", output);
+        AssertContains("End of results.", output);
+    }
+
+    private static void RendersHelp()
+    {
+        var output = new AdvisorTextRenderer().RenderHelp();
+
+        AssertContains("/housingadvisor category Seating", output);
+        AssertContains("/housingadvisor search chair", output);
+        AssertContains("/housingadvisor hahelp", output);
     }
 
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)

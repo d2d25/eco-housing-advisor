@@ -207,7 +207,7 @@ namespace EcoHousingAdvisor.EcoRuntime
 
         private static string ReadDisplayName(Type itemType)
         {
-            return StripSuffix(itemType.Name, "Item");
+            return SplitPascalCase(StripSuffix(itemType.Name, "Item"));
         }
 
         private static string StripSuffix(string value, string suffix)
@@ -215,6 +215,34 @@ namespace EcoHousingAdvisor.EcoRuntime
             return value.EndsWith(suffix, StringComparison.Ordinal)
                 ? value.Substring(0, value.Length - suffix.Length)
                 : value;
+        }
+
+        private static string SplitPascalCase(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+
+            var chars = new List<char>();
+            for (var i = 0; i < value.Length; i++)
+            {
+                var current = value[i];
+                if (i > 0 && char.IsUpper(current) && !char.IsWhiteSpace(value[i - 1]))
+                {
+                    var previous = value[i - 1];
+                    var hasNext = i + 1 < value.Length;
+                    var next = hasNext ? value[i + 1] : '\0';
+                    if (char.IsLower(previous) || (hasNext && char.IsLower(next)))
+                    {
+                        chars.Add(' ');
+                    }
+                }
+
+                chars.Add(current);
+            }
+
+            return new string(chars.ToArray());
         }
 
     }

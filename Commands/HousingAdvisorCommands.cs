@@ -48,6 +48,12 @@ namespace EcoHousingAdvisor.Commands
             SendQuery(user, new HousingFurnitureQuery("summary", null, 1, PageSize), true);
         }
 
+        [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor help.", "hahelp")]
+        public static void HaHelp(User user)
+        {
+            Send(user, new AdvisorTextRenderer().RenderHelp());
+        }
+
         private static void SendQuery(User user, HousingFurnitureQuery query, bool refresh)
         {
             var snapshot = Cache.Get(refresh);

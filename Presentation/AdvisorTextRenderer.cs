@@ -39,7 +39,7 @@ namespace EcoHousingAdvisor.Presentation
 
             if (result.PageCount > 1)
             {
-                lines.Add("Use /housingadvisor " + NextPageHint(result));
+                lines.Add(NextPageHint(result));
             }
 
             return string.Join(Environment.NewLine, lines);
@@ -76,6 +76,21 @@ namespace EcoHousingAdvisor.Presentation
                 snapshot.GeneratedAt);
         }
 
+        public string RenderHelp()
+        {
+            return string.Join(Environment.NewLine, new[]
+            {
+                "Eco Housing Advisor commands:",
+                "/housingadvisor - first summary page",
+                "/housingadvisor 2 - summary page 2",
+                "/housingadvisor category Seating - filter one category",
+                "/housingadvisor search chair - search furniture",
+                "/housingadvisor hadebug - cache/discovery debug",
+                "/housingadvisor harefresh - rebuild furniture cache",
+                "/housingadvisor hahelp - show this help",
+            });
+        }
+
         private static void AddGroupLines(List<string> lines, IReadOnlyList<HousingFurnitureGroup> groups)
         {
             foreach (var categoryGroup in groups.GroupBy(group => group.Category).OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
@@ -103,13 +118,18 @@ namespace EcoHousingAdvisor.Presentation
         private static string NextPageHint(HousingFurnitureQueryResult result)
         {
             var query = result.Query;
+            if (query.Page >= result.PageCount)
+            {
+                return "End of results.";
+            }
+
             var nextPage = Math.Min(query.Page + 1, result.PageCount);
             if (query.Mode == "category" || query.Mode == "search")
             {
-                return string.Format(CultureInfo.InvariantCulture, "{0} {1} {2}", query.Mode, query.Text, nextPage);
+                return string.Format(CultureInfo.InvariantCulture, "Next: /housingadvisor {0} {1} {2}", query.Mode, query.Text, nextPage);
             }
 
-            return nextPage.ToString(CultureInfo.InvariantCulture);
+            return "Next: /housingadvisor " + nextPage.ToString(CultureInfo.InvariantCulture);
         }
     }
 }
