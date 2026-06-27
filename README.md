@@ -533,11 +533,15 @@ V0.2 adds a small browse layer over the V0 furniture snapshot:
 
 - `/housingadvisor` shows a compact first page instead of printing every group.
 - `/housingadvisor <page>` shows a summary page.
-- `/housingadvisor category <name>` filters by housing category.
-- `/housingadvisor search <text>` filters by category, type limit, item class, or display name.
-- `/housingadvisor debug` shows snapshot counts and cache timestamp.
-- `/housingadvisor refresh` rebuilds the runtime furniture snapshot.
+- `/housingadvisor category <name>` filters by housing category through an Eco sub-command.
+- `/housingadvisor search <text>` filters by category, type limit, item class, or display name through an Eco sub-command.
+- `/housingadvisor debug` shows snapshot counts and cache timestamp through an Eco sub-command.
+- `/housingadvisor refresh` rebuilds the runtime furniture snapshot through an Eco sub-command.
 
 The runtime reader still avoids Eco attribute construction after server startup. It treats `WorldObjectItem.homeValue` / `HomeValue` as the source of truth and does not instantiate item display attributes. Display names are therefore currently safe class-name-based names until a side-effect-free Eco naming API is confirmed.
 
 V0.2 is still a data probe, not a room optimizer.
+
+## V0.2.1 Notes
+
+Eco 0.13 did not route multiple optional parameters on the root `/housingadvisor` command as expected. V0.2.1 changes `category`, `search`, `debug`, and `refresh` to explicit Eco `ChatSubCommand` handlers so commands like `/housingadvisor category Seating` and `/housingadvisor search chair` dispatch correctly.

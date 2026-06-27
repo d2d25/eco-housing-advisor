@@ -18,39 +18,46 @@ namespace EcoHousingAdvisor.Commands
             new HousingFurnitureGrouper());
 
         [ChatCommand("List housing furniture values discovered from the Eco runtime.")]
-        public static void HousingAdvisor(User user, string action = null, string value = null, int page = 1)
+        public static void HousingAdvisor(User user, int page = 1)
         {
-            var refresh = Is(action, "refresh");
+            SendQuery(user, new HousingFurnitureQuery("summary", null, page, PageSize), false);
+        }
+
+        [ChatSubCommand("HousingAdvisor", "List one housing furniture category.", "category")]
+        public static void Category(User user, string name, int page = 1)
+        {
+            SendQuery(user, new HousingFurnitureQuery("category", name, page, PageSize), false);
+        }
+
+        [ChatSubCommand("HousingAdvisor", "Search housing furniture by name, category, or type limit.", "search")]
+        public static void Search(User user, string text, int page = 1)
+        {
+            SendQuery(user, new HousingFurnitureQuery("search", text, page, PageSize), false);
+        }
+
+        [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor discovery debug information.", "debug")]
+        public static void Debug(User user)
+        {
+            var snapshot = Cache.Get(false);
+            Send(user, new AdvisorTextRenderer().RenderDebug(snapshot));
+        }
+
+        [ChatSubCommand("HousingAdvisor", "Refresh the cached housing furniture snapshot.", "refresh")]
+        public static void Refresh(User user)
+        {
+            SendQuery(user, new HousingFurnitureQuery("summary", null, 1, PageSize), true);
+        }
+
+        private static void SendQuery(User user, HousingFurnitureQuery query, bool refresh)
+        {
             var snapshot = Cache.Get(refresh);
-            var renderer = new AdvisorTextRenderer();
-            var text = Is(action, "debug")
-                ? renderer.RenderDebug(snapshot)
-                : renderer.RenderFurnitureResult(new HousingFurnitureBrowser().Query(
-                    snapshot.Groups,
-                    ParseQuery(action, value, page)));
+            var text = new AdvisorTextRenderer().RenderFurnitureResult(new HousingFurnitureBrowser().Query(snapshot.Groups, query));
+            Send(user, text);
+        }
+
+        private static void Send(User user, string text)
+        {
             ChatManager.SendMessage(user, ChannelManager.Obj.Get(SpecialChannel.General), text);
-        }
-
-        private static HousingFurnitureQuery ParseQuery(string action, string value, int page)
-        {
-            if (Is(action, "category"))
-            {
-                return new HousingFurnitureQuery("category", value, page, PageSize);
-            }
-
-            if (Is(action, "search"))
-            {
-                return new HousingFurnitureQuery("search", value, page, PageSize);
-            }
-
-            var summaryPage = 1;
-            int.TryParse(action, out summaryPage);
-            return new HousingFurnitureQuery("summary", null, summaryPage < 1 ? page : summaryPage, PageSize);
-        }
-
-        private static bool Is(string actual, string expected)
-        {
-            return actual != null && actual.Equals(expected, System.StringComparison.OrdinalIgnoreCase);
         }
     }
 }
