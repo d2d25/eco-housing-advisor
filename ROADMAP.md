@@ -7,11 +7,14 @@ V1 should feel useful in-game, like a focused housing equivalent of a food advis
 - simple command flow;
 - fast response;
 - no giant chat spam;
+- lightweight in-game UI where Eco supports it;
 - explains the next useful furniture to add;
 - uses Eco runtime data as source of truth;
 - stays safe on a live server.
 
 V1 is not the full economy optimizer. It is the first playable room advisor.
+
+Chat is only the development and fallback interface. The final user experience should move important browsing and recommendations into Eco UI surfaces as soon as the runtime APIs are confirmed.
 
 ## Current State
 
@@ -53,7 +56,38 @@ Acceptance:
 - Search/category output is readable in chat.
 - No server restart/runtime errors.
 
-## V0.4: Runtime Discovery Hardening
+## V0.4: Lightweight In-Game UI Probe
+
+Purpose: investigate and implement the first UI surface, inspired by OpenNutriView's tooltip/config approach.
+
+Tasks:
+
+- Add `/housingadvisor help` if not already done.
+- Add `/housingadvisor config` if Eco's popup editing APIs are safe to use.
+- Investigate Eco UI APIs used by OpenNutriView:
+  - tooltip hooks;
+  - `ViewEditorUtils.PopupUserEditValue(...)`;
+  - player-specific config storage;
+  - tab/window APIs if exposed in Eco 0.13.
+- Add a minimal player config:
+  - max suggestions;
+  - show debug details;
+  - preferred output mode;
+  - ignored categories.
+- If tooltip hooks are safe, add furniture item tooltip lines:
+  - housing category;
+  - base value;
+  - type limit;
+  - duplicate multiplier.
+- Keep chat output as fallback.
+
+Acceptance:
+
+- `/housingadvisor config` opens a small in-game config UI, or the README documents why it is blocked.
+- Furniture tooltip enrichment works without server startup errors, or is explicitly deferred.
+- The UI code stays separate from domain scoring logic.
+
+## V0.5: Runtime Discovery Hardening
 
 Purpose: make the furniture dataset trustworthy.
 
@@ -76,7 +110,48 @@ Acceptance:
 - Runtime discovery does not throw on repeated calls.
 - Known items like chairs, tables, lamps, rugs, and toilets appear.
 
-## V0.5: Room Context Probe
+## V0.6: Economy Viewer Spreadsheet Probe
+
+Purpose: stop relying on chat for economy-style browsing and prepare a spreadsheet-like viewer.
+
+Target experience:
+
+```text
+Eco Housing Advisor > Economy
+
+Columns:
+Item | Category | Base | Type limit | Duplicate mult | Skill | Best price | Stock | Seller
+```
+
+Preferred implementation order:
+
+1. Try an in-game tab/window if Eco exposes a stable UI/tab API.
+2. If in-game tabs are too risky, expose a small local web page from the mod.
+3. If serving a page from the mod is blocked, export a CSV/JSON snapshot for a separate viewer.
+
+Tasks:
+
+- Investigate whether Eco 0.13 can add a custom in-game tab/window from a server mod.
+- Reuse existing furniture cache for table rows.
+- Add sortable/filterable columns in the chosen UI:
+  - item name;
+  - category;
+  - base value;
+  - type limit;
+  - duplicate multiplier;
+  - recipe/skill hint when available;
+  - economy fields later.
+- Keep economy columns empty or labeled "not read yet" until store reading is implemented.
+- Add `/housingadvisor economy` as the command that opens the viewer or returns its URL/export path.
+- Do not build full price optimization yet.
+
+Acceptance:
+
+- A tester can browse furniture data outside chat.
+- The table is readable and filterable enough to compare items.
+- If no in-game UI hook is available, the fallback page/export path is documented and usable.
+
+## V0.7: Room Context Probe
 
 Purpose: detect enough player/room context to start recommendations.
 
@@ -100,7 +175,7 @@ Acceptance:
 - If auto-detect fails, manual mode still works.
 - No recommendation math yet beyond matching categories.
 
-## V0.6: First Recommendation Slice
+## V0.8: First Recommendation Slice
 
 Purpose: recommend useful furniture by base housing value and duplicate type.
 
@@ -131,7 +206,7 @@ Acceptance:
 - The ranking is simple but understandable.
 - It does not claim exact real XP yet.
 
-## V0.7: Better Real Gain Approximation
+## V0.9: Better Real Gain Approximation
 
 Purpose: move from base value to useful estimated gain.
 
@@ -151,7 +226,7 @@ Acceptance:
 - Recommending a second chair shows lower gain than the first.
 - Output remains compact.
 
-## V0.8: Room Material Tier Awareness
+## V0.10: Room Material Tier Awareness
 
 Purpose: avoid recommending high-value items when room material tier caps them badly.
 
@@ -169,7 +244,7 @@ Acceptance:
 - User can specify tier manually.
 - Recommendations explain when gain is capped by room material quality.
 
-## V0.9: Crafting Hints
+## V0.11: Crafting Hints
 
 Purpose: give food-advisor-like usefulness without full economy optimization.
 
@@ -196,6 +271,8 @@ V1 command set:
 /housingadvisor help
 /housingadvisor search chair
 /housingadvisor category Seating
+/housingadvisor config
+/housingadvisor economy
 /housingadvisor room
 /housingadvisor room Bedroom
 /housingadvisor room Bedroom tier 2
@@ -226,6 +303,8 @@ V1 acceptance:
 
 - Works on a live Eco server without startup errors.
 - Responds fast after first cache build.
+- Has at least one non-chat UI surface, preferably config/tooltip or a table viewer.
+- Provides a spreadsheet-like furniture/economy viewer, either in-game or via fallback page/export.
 - Recommends a short list for a room.
 - Explains why each item is suggested.
 - Handles unknown runtime APIs gracefully.
@@ -249,6 +328,7 @@ V1.3:
 
 - Store/economy read-only price hints.
 - Best XP per credit.
+- Promote the economy viewer from furniture table to real price/stock table.
 
 V2:
 
