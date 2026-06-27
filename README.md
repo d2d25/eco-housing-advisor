@@ -488,7 +488,7 @@ The initial skeleton is intentionally small:
 - `Domain/` contains pure grouping records and logic.
 - `EcoRuntime/` contains the Eco-facing furniture reader.
 - `Presentation/` renders simple command text.
-- `Commands/` contains the `/housingadvisor` chat command behind `ECO_MODKIT`.
+- `Commands/` contains the `/housingadvisor` chat command for Eco's `Mods/UserCode` runtime.
 - `Tests/` contains fake domain tests that can run without Eco assemblies.
 
 Runtime API uncertainty to confirm inside a real Eco server:

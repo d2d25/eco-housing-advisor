@@ -1,4 +1,3 @@
-#if ECO_MODKIT
 using Eco.Gameplay.Players;
 using Eco.Gameplay.Systems.Messaging.Chat;
 using Eco.Gameplay.Systems.Messaging.Chat.Channels;
@@ -90,4 +89,3 @@ namespace EcoHousingAdvisor.Commands
         }
     }
 }
-#endif

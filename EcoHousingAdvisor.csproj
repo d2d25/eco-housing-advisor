@@ -16,6 +16,14 @@
     <Compile Remove="UI\**\*.cs" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(EcoHousingAdvisorTests)' == 'true'">
+    <Compile Remove="Commands\**\*.cs" />
+    <Compile Remove="UI\**\*.cs" />
+    <Compile Remove="EcoRuntime\EcoAvailabilityReader.cs" />
+    <Compile Remove="EcoRuntime\EcoFurnitureReader.cs" />
+    <Compile Remove="EcoRuntime\HousingAdvisorRuntime.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <Compile Remove="bin\**\*.cs" />
     <Compile Remove="obj\**\*.cs" />

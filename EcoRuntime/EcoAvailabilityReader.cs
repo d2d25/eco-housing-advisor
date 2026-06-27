@@ -1,4 +1,3 @@
-#if ECO_MODKIT
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -213,4 +212,3 @@ namespace EcoHousingAdvisor.EcoRuntime
         }
     }
 }
-#endif
