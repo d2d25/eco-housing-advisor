@@ -245,6 +245,9 @@ The advisor must eventually account for:
 
 The advisor should always present "real gain", not only base housing value.
 
+Confirmed room/support category rules are documented in `docs/housing-room-rules.md`.
+V0.6 uses those rules to translate furniture categories into useful room placement text.
+
 ## Equivalence And Variants
 
 Two concepts must stay separate.
@@ -326,7 +329,6 @@ Suggested commands:
 /housingadvisor
 /housingadvisor room
 /housingadvisor house
-/housingadvisor economy
 /housingadvisor debug
 ```
 
@@ -609,3 +611,17 @@ Runtime API uncertainty confirmed:
 - The `AccessType.ConsumerAccess` authorization enum used by OpenNutriView did not compile from this server's `Mods/UserCode` context. V0.5 therefore scans enabled stores first; per-player store authorization needs a confirmed namespace/type before being re-enabled.
 - Crafter detection reads `UserManager.Users` and `user.Skillset.Skills` best-effort. If Eco exposes skill levels differently on a server, suggestions will still show the required craft skill but may not list all possible crafters yet.
 - Suggested gain is explicitly an estimate. Real gain still needs room detection, current placed furniture, duplicate penalties, and material tier caps.
+
+## V0.6 Notes
+
+V0.6 documents Eco's vanilla housing room/support category rules and uses them in suggestions:
+
+- `Seating` is displayed as useful in Living Room, Bedroom, Kitchen, Bathroom, Outdoor, and Cultural instead of being treated like a room.
+- `Decoration` and `Lighting` are displayed as support for normal residence rooms.
+- Primary categories such as Bedroom, Kitchen, Bathroom, Living Room, and Outdoor point to their matching room.
+- `Industrial` is marked as negative for residence use.
+
+Runtime API uncertainty confirmed:
+
+- These rules are read from the server's vanilla `Mods/__core__/Systems/HousingValues.cs`.
+- A safe runtime API for reading all configured `RoomCategory` relationships from `Mods/UserCode` is not confirmed yet, so the domain layer contains a small documented copy for now.

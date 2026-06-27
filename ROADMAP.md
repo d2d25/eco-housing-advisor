@@ -31,6 +31,7 @@ V0.5 can:
 - suggest best additions for a housing category with `/housingadvisor suggest Seating`;
 - show cheapest active shop offer when available;
 - show craft skill/crafter hints when no shop offer is found;
+- map support categories such as Seating, Decoration, and Lighting to useful room placements;
 - avoid Eco attribute construction errors after startup.
 
 ## V0.3: Polish The Data Browser
@@ -136,46 +137,26 @@ Status:
 - Craft hints follow Eco core `CraftingComponent.RecipesForItem(...)`.
 - Per-player store authorization still needs confirmed `AccessType` namespace in `Mods/UserCode`.
 
-## V0.6: Economy Viewer Spreadsheet Probe
+## V0.6: Housing Room Rules
 
-Purpose: stop relying on chat for economy-style browsing and prepare a spreadsheet-like viewer.
-
-Target experience:
-
-```text
-Eco Housing Advisor > Economy
-
-Columns:
-Item | Category | Base | Type limit | Duplicate mult | Skill | Best price | Stock | Seller
-```
-
-Preferred implementation order:
-
-1. Try an in-game tab/window if Eco exposes a stable UI/tab API.
-2. If in-game tabs are too risky, expose a small local web page from the mod.
-3. If serving a page from the mod is blocked, export a CSV/JSON snapshot for a separate viewer.
+Purpose: stop treating Eco housing categories as if they were all rooms.
 
 Tasks:
 
-- Investigate whether Eco 0.13 can add a custom in-game tab/window from a server mod.
-- Reuse existing furniture cache for table rows.
-- Add sortable/filterable columns in the chosen UI:
-  - item name;
-  - category;
-  - base value;
-  - type limit;
-  - duplicate multiplier;
-  - recipe/skill hint when available;
-  - economy fields later.
-- Keep economy columns empty or labeled "not read yet" until store reading is implemented.
-- Add `/housingadvisor economy` as the command that opens the viewer or returns its URL/export path.
-- Do not build full price optimization yet.
+- Read Eco's vanilla room/support rules from `Mods/__core__/Systems/HousingValues.cs`.
+- Document the confirmed rules in `docs/housing-room-rules.md`.
+- Add a small domain rule table until a safe runtime API for `RoomCategory` metadata is confirmed.
+- Use the rules in suggestions:
+  - `Seating` is useful in several rooms;
+  - `Decoration` and `Lighting` support any room type;
+  - `Industrial` should be avoided on residence property.
+- Keep the output simple and clearly labeled as placement guidance, not exact real XP.
 
 Acceptance:
 
-- A tester can browse furniture data outside chat.
-- The table is readable and filterable enough to compare items.
-- If no in-game UI hook is available, the fallback page/export path is documented and usable.
+- `/housingadvisor suggest Seating` says chairs/tables are useful in real rooms, not "in Seating".
+- `/housingadvisor suggest Lighting` and `/housingadvisor suggest Decoration` show useful room placement.
+- The README documents the runtime API uncertainty.
 
 ## V0.7: Room Context Probe
 
@@ -298,7 +279,6 @@ V1 command set:
 /housingadvisor search chair
 /housingadvisor category Seating
 /housingadvisor config
-/housingadvisor economy
 /housingadvisor room
 /housingadvisor room Bedroom
 /housingadvisor room Bedroom tier 2
@@ -329,8 +309,7 @@ V1 acceptance:
 
 - Works on a live Eco server without startup errors.
 - Responds fast after first cache build.
-- Has at least one non-chat UI surface, preferably config/tooltip or a table viewer.
-- Provides a spreadsheet-like furniture/economy viewer, either in-game or via fallback page/export.
+- Has at least one non-chat UI surface, preferably tooltip or config.
 - Recommends a short list for a room.
 - Explains why each item is suggested.
 - Handles unknown runtime APIs gracefully.
@@ -354,7 +333,7 @@ V1.3:
 
 - Store/economy read-only price hints.
 - Best XP per credit.
-- Promote the economy viewer from furniture table to real price/stock table.
+- Revisit a spreadsheet-like economy/furniture viewer once room advice is useful.
 
 V2:
 

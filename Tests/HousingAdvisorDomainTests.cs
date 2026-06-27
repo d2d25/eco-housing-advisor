@@ -16,6 +16,7 @@ public static class HousingAdvisorDomainTests
         RendersEndOfResults();
         RendersHelp();
         FormatsTooltipText();
+        MapsSupportCategoriesToUsefulRooms();
         SuggestsStoreOffersForCategory();
         SuggestsCraftHintsWhenNoStoreOfferExists();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
@@ -160,6 +161,21 @@ public static class HousingAdvisorDomainTests
         AssertContains("Duplicate multiplier: 0.5", output);
     }
 
+    private static void MapsSupportCategoriesToUsefulRooms()
+    {
+        var seating = HousingRoomRules.ForCategory("Seating");
+        AssertEqual(false, seating.CanDefineRoom, "seating room category");
+        AssertContains("Living Room", HousingRoomRules.FormatUsefulRooms("Seating"));
+        AssertContains("Bedroom", HousingRoomRules.FormatUsefulRooms("Seating"));
+
+        var lighting = HousingRoomRules.ForCategory("Lighting");
+        AssertEqual(true, lighting.SupportForAnyRoom, "lighting any-room support");
+        AssertContains("Kitchen", HousingRoomRules.FormatUsefulRooms("Lighting"));
+
+        var industrial = HousingRoomRules.ForCategory("Industrial");
+        AssertContains("avoid on residence", industrial.Note);
+    }
+
     private static void SuggestsStoreOffersForCategory()
     {
         var groups = new HousingFurnitureGrouper().GroupFurniture(
@@ -181,6 +197,7 @@ public static class HousingAdvisorDomainTests
         AssertContains("best additions for Seating", output);
         AssertContains("Fancy Chair", output);
         AssertContains("+3 XP/day est.", output);
+        AssertContains("useful in Living Room, Bedroom, Kitchen, Bathroom, Outdoor, Cultural", output);
         AssertContains("Buy: 12 Credits at Best Furniture", output);
         AssertContains("seller Ada", output);
     }

@@ -121,11 +121,11 @@ namespace EcoHousingAdvisor.Presentation
                 var firstItem = suggestion.Group.Items[0];
                 lines.Add(string.Format(
                     CultureInfo.InvariantCulture,
-                    "{0}. {1}: +{2} XP/day est., put in {3}, type {4}",
+                    "{0}. {1}: +{2} XP/day est., useful in {3}, type {4}",
                     index++,
                     firstItem.DisplayName,
                     HousingFurnitureFormatter.FormatBaseValue(suggestion.EstimatedGain),
-                    suggestion.Group.Category,
+                    HousingRoomRules.FormatUsefulRooms(suggestion.Group.Category),
                     suggestion.Group.TypeForRoomLimit));
                 lines.Add("   " + FormatAvailability(suggestion.Availability));
             }
