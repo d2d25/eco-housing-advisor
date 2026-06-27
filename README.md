@@ -14,6 +14,8 @@ The goal is to build an in-game housing assistant, inspired by food advisor mods
 
 The project should prefer Eco runtime data and Eco game code over hand-maintained JSON or duplicated rules. Static extraction can still be useful for tests and fallback data, but the primary target is a server-side mod that runs inside Eco and sees the real server state.
 
+Roadmap to a playable V1: see `ROADMAP.md`.
+
 ## Main Design Change
 
 This project replaces the previous direction of a mostly external web app reading `eco-data.json`.
