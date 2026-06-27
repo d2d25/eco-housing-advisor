@@ -639,3 +639,16 @@ Runtime API uncertainty confirmed:
 
 - Eco core exposes current room access through `user.UpdateRoom()` and `user.CurrentRoom`, as seen in `Mods/__core__/Commands/PaintingCommands.cs`.
 - Full residence/deed room enumeration still needs a confirmed stable API. V0.7 may report only the current confirmed room until that API is found.
+
+## V0.7.1 Notes
+
+V0.7.1 pivots the next room-advisor work toward Eco's own residency value source:
+
+- The mod now hooks `Eco.Gameplay.Housing.PropertyValues.PropertyValue`, the same runtime family used by the in-game "Residency Property Value" panel.
+- This is the correct direction for rentals, roommates, and residence deeds, because housing XP can apply without simple furniture/object ownership.
+- A conservative `EcoPropertyValueReader` extracts per-room values when Eco exposes them through readable members and keeps the domain snapshot separate from the Eco runtime type.
+
+Runtime API uncertainty confirmed:
+
+- The exact internal member names used by `PropertyValue` for per-room values still need confirmation on this Eco server version.
+- The new tooltip section will say when it is attached to `PropertyValue` but cannot yet read the room list, which gives us a clean next mapping target without guessing from ownership.

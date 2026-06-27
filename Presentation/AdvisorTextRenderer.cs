@@ -136,6 +136,39 @@ namespace EcoHousingAdvisor.Presentation
             return string.Join(Environment.NewLine, lines);
         }
 
+        public string RenderPropertyValue(HousingPropertyValueSnapshot snapshot)
+        {
+            var lines = new List<string>();
+            if (snapshot.Rooms.Count > 0)
+            {
+                lines.Add(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Advisor sees {0} residence rooms from PropertyValue.",
+                    snapshot.Rooms.Count));
+
+                foreach (var room in snapshot.Rooms.Take(5))
+                {
+                    lines.Add(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "- {0}: {1} XP/day",
+                        room.RoomName,
+                        FormatNullable(room.Value)));
+                }
+            }
+            else
+            {
+                lines.Add("Advisor is attached to PropertyValue, but room details need one more runtime mapping pass.");
+            }
+
+            if (snapshot.TotalValue != null)
+            {
+                lines.Add("Total read: " + HousingFurnitureFormatter.FormatBaseValue(snapshot.TotalValue.Value) + " XP/day");
+            }
+
+            lines.Add("Next useful commands: /housingadvisor suggest Seating, Lighting, Decoration");
+            return string.Join(Environment.NewLine, lines);
+        }
+
         public string RenderSuggestions(HousingSuggestionResult result)
         {
             if (result.Suggestions.Count == 0)

@@ -1,4 +1,5 @@
 using EcoHousingAdvisor.Domain;
+using EcoHousingAdvisor.EcoRuntime;
 using EcoHousingAdvisor.Presentation;
 
 namespace EcoHousingAdvisor.Tests;
@@ -20,6 +21,8 @@ public static class HousingAdvisorDomainTests
         RendersResidenceProbeWithTierCaps();
         SuggestsStoreOffersForCategory();
         SuggestsCraftHintsWhenNoStoreOfferExists();
+        ReadsFakePropertyValueRooms();
+        RendersPropertyValueTooltipSummary();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
 
@@ -246,6 +249,42 @@ public static class HousingAdvisorDomainTests
         AssertContains("Craft: Logging level 1; crafters: Ada, Ben", output);
     }
 
+    private static void ReadsFakePropertyValueRooms()
+    {
+        var fake = new FakePropertyValue
+        {
+            TotalValue = 21.2,
+            RoomValues = new Dictionary<string, FakeRoomValue>
+            {
+                ["Bedroom"] = new FakeRoomValue { Value = 8.4 },
+                ["Kitchen"] = new FakeRoomValue { Value = 12.8 },
+            },
+        };
+
+        var snapshot = new EcoPropertyValueReader().Read(fake);
+
+        AssertEqual(21.2, snapshot.TotalValue, "property total");
+        AssertEqual(2, snapshot.Rooms.Count, "property room count");
+        AssertContains("Bedroom", snapshot.Rooms[0].RoomName);
+        AssertEqual(8.4, snapshot.Rooms[0].Value, "bedroom value");
+    }
+
+    private static void RendersPropertyValueTooltipSummary()
+    {
+        var snapshot = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            21.2,
+            [new HousingPropertyRoomValue("Bedroom", "Bedroom", 8.4)],
+            [],
+            DateTimeOffset.UtcNow);
+
+        var output = new AdvisorTextRenderer().RenderPropertyValue(snapshot);
+
+        AssertContains("Advisor sees 1 residence rooms from PropertyValue.", output);
+        AssertContains("- Bedroom: 8.4 XP/day", output);
+        AssertContains("Total read: 21.2 XP/day", output);
+    }
+
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)
     {
         return new HousingFurnitureItem(
@@ -255,6 +294,18 @@ public static class HousingAdvisorDomainTests
             baseValue,
             typeLimit,
             duplicateMultiplier);
+    }
+
+    private sealed class FakePropertyValue
+    {
+        public double TotalValue { get; set; }
+
+        public Dictionary<string, FakeRoomValue> RoomValues { get; set; } = new Dictionary<string, FakeRoomValue>();
+    }
+
+    private sealed class FakeRoomValue
+    {
+        public double Value { get; set; }
     }
 
     private static void AssertEqual<T>(T expected, T actual, string label)

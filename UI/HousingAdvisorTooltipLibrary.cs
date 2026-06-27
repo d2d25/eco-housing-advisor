@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using Eco.Gameplay.Items;
+using Eco.Gameplay.Housing.PropertyValues;
 using Eco.Gameplay.Players;
 using Eco.Gameplay.Systems.NewTooltip;
 using Eco.Gameplay.Systems.NewTooltip.TooltipLibraryFiles;
@@ -36,6 +37,24 @@ namespace Eco.Mods.TechTree
             catch (Exception exception)
             {
                 Log.WriteError(Localizer.Do($"[EcoHousingAdvisor] Failed to generate housing tooltip for {ecoItem.GetType().Name}."));
+                Log.WriteException(exception);
+                return LocString.Empty;
+            }
+        }
+
+        [NewTooltip(CacheAs.Disabled, overrideType: typeof(PropertyValue))]
+        public static LocString HousingAdvisorPropertyValueTooltip(this PropertyValue propertyValue)
+        {
+            try
+            {
+                var snapshot = new EcoPropertyValueReader().Read(propertyValue);
+                return new TooltipSection(
+                    Localizer.DoStr("Eco Housing Advisor"),
+                    Localizer.NotLocalized(new AdvisorTextRenderer().RenderPropertyValue(snapshot)));
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError(Localizer.Do("[EcoHousingAdvisor] Failed to generate PropertyValue tooltip."));
                 Log.WriteException(exception);
                 return LocString.Empty;
             }
