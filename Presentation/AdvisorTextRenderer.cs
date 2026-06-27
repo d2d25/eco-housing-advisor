@@ -136,7 +136,10 @@ namespace EcoHousingAdvisor.Presentation
             return string.Join(Environment.NewLine, lines);
         }
 
-        public string RenderPropertyValue(HousingPropertyValueSnapshot snapshot, IReadOnlyList<HousingFurnitureGroup> groups = null)
+        public string RenderPropertyValue(
+            HousingPropertyValueSnapshot snapshot,
+            IReadOnlyList<HousingFurnitureGroup> groups = null,
+            HousingAvailabilitySnapshot availability = null)
         {
             var lines = new List<string>();
             if (snapshot.Rooms.Count > 0)
@@ -164,16 +167,21 @@ namespace EcoHousingAdvisor.Presentation
                         foreach (var addition in roomAdvice.Additions)
                         {
                             var firstItem = addition.Group.Items[0];
-                            lines.Add(string.Format(
-                                CultureInfo.InvariantCulture,
-                                "- {0} in {1}: +{2} base XP/day ({3})",
-                                firstItem.DisplayName,
-                                roomAdvice.Room.RoomName,
-                                HousingFurnitureFormatter.FormatBaseValue(addition.EstimatedGain),
-                                addition.Category));
-                        }
+                        lines.Add(string.Format(
+                            CultureInfo.InvariantCulture,
+                            "- {0} in {1}: +{2} base XP/day ({3})",
+                            firstItem.DisplayName,
+                            roomAdvice.Room.RoomName,
+                            HousingFurnitureFormatter.FormatBaseValue(addition.EstimatedGain),
+                            addition.Category));
+                            var itemAvailability = availability?.ForItem(firstItem.ItemTypeName);
+                            if (itemAvailability != null)
+                            {
+                                lines.Add("  " + FormatAvailability(itemAvailability));
+                            }
                     }
                 }
+            }
             }
             else
             {

@@ -43,15 +43,16 @@ namespace Eco.Mods.TechTree
         }
 
         [NewTooltip(CacheAs.Disabled, overrideType: typeof(PropertyValue))]
-        public static LocString HousingAdvisorPropertyValueTooltip(this PropertyValue propertyValue)
+        public static LocString HousingAdvisorPropertyValueTooltip(this PropertyValue propertyValue, User user)
         {
             try
             {
                 var snapshot = new EcoPropertyValueReader().Read(propertyValue);
                 var furniture = HousingAdvisorRuntime.GetSnapshot(false);
+                var availability = HousingAdvisorRuntime.GetAvailability(user, furniture);
                 return new TooltipSection(
                     Localizer.DoStr("Eco Housing Advisor"),
-                    Localizer.NotLocalized(new AdvisorTextRenderer().RenderPropertyValue(snapshot, furniture.Groups)));
+                    Localizer.NotLocalized(new AdvisorTextRenderer().RenderPropertyValue(snapshot, furniture.Groups, availability)));
             }
             catch (Exception exception)
             {

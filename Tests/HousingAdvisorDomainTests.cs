@@ -326,6 +326,16 @@ public static class HousingAdvisorDomainTests
         var output = new AdvisorTextRenderer().RenderPropertyValue(property, groups);
         AssertContains("Buy/craft for Salon:", output);
         AssertContains("Big Painting in Salon", output);
+
+        var availability = new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>
+        {
+            ["BigPaintingItem"] = new HousingItemAvailability(
+                "BigPaintingItem",
+                [new HousingStoreOffer("Decor Shop", "Ada", 42, "Credits", 1)],
+                []),
+        });
+        var outputWithAvailability = new AdvisorTextRenderer().RenderPropertyValue(property, groups, availability);
+        AssertContains("Buy: 42 Credits at Decor Shop", outputWithAvailability);
     }
 
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)
