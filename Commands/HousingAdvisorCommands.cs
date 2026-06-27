@@ -1,4 +1,7 @@
 #if ECO_MODKIT
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 using Eco.Gameplay.Players;
 using Eco.Gameplay.Systems.Messaging.Chat;
 using Eco.Gameplay.Systems.Messaging.Chat.Channels;
@@ -77,6 +80,45 @@ namespace EcoHousingAdvisor.Commands
             Send(user, new AdvisorTextRenderer().RenderHelp());
         }
 
+        [ChatSubCommand("HousingAdvisor", "Show your Eco user identifiers for server admin setup.", "whoami")]
+        public static void WhoAmI(User user)
+        {
+            var lines = new List<string>
+            {
+                "Eco Housing Advisor whoami:",
+                "Name: " + SafeValue(user, "Name"),
+            };
+
+            foreach (var memberName in new[]
+            {
+                "Id",
+                "ID",
+                "SlgId",
+                "SLGId",
+                "SteamId",
+                "SteamID",
+                "SteamID64",
+                "AccountId",
+                "AccountID",
+                "StrangeId",
+                "StrangeID",
+                "StrangeCloudId",
+                "StrangeCloudID",
+                "PlayerId",
+                "PlayerID",
+            })
+            {
+                var value = SafeValue(user, memberName);
+                if (!string.IsNullOrWhiteSpace(value) && value != "<missing>")
+                {
+                    lines.Add(memberName + ": " + value);
+                }
+            }
+
+            lines.Add("Use SteamID64 or SLG ID in Configs/Users.eco Admins.");
+            Send(user, string.Join(Environment.NewLine, lines));
+        }
+
         private static void SendQuery(User user, HousingFurnitureQuery query, bool refresh)
         {
             var snapshot = HousingAdvisorRuntime.GetSnapshot(refresh);
@@ -87,6 +129,26 @@ namespace EcoHousingAdvisor.Commands
         private static void Send(User user, string text)
         {
             ChatManager.SendMessage(user, ChannelManager.Obj.Get(SpecialChannel.General), text);
+        }
+
+        private static string SafeValue(object instance, string memberName)
+        {
+            const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+            var property = instance.GetType().GetProperty(memberName, Flags);
+            if (property != null)
+            {
+                var value = property.GetValue(instance);
+                return value == null ? "<null>" : value.ToString();
+            }
+
+            var field = instance.GetType().GetField(memberName, Flags);
+            if (field != null)
+            {
+                var value = field.GetValue(instance);
+                return value == null ? "<null>" : value.ToString();
+            }
+
+            return "<missing>";
         }
     }
 }
