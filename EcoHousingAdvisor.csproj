@@ -15,6 +15,11 @@
     <Compile Remove="Tests\**\*.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="bin\**\*.cs" />
+    <Compile Remove="obj\**\*.cs" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(EcoReferencePath)' != ''">
     <EcoReferenceAssembly Include="$(EcoReferencePath)\$(EcoReferencePattern)" />
     <Reference Include="@(EcoReferenceAssembly)">

@@ -3,11 +3,48 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using EcoHousingAdvisor.Domain;
+using EcoHousingAdvisor.EcoRuntime;
 
 namespace EcoHousingAdvisor.Presentation
 {
     public sealed class AdvisorTextRenderer
     {
+        public string RenderFurnitureResult(HousingFurnitureQueryResult result)
+        {
+            if (result.Groups.Count == 0)
+            {
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Eco Housing Advisor: no matching furniture. {0}. Total: {1} entries in {2} groups.",
+                    result.Message,
+                    result.TotalFurniture,
+                    result.TotalGroups);
+            }
+
+            var lines = new List<string>
+            {
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Eco Housing Advisor: {0}. Showing {1}/{2} groups, page {3}/{4}. Total: {5} entries in {6} groups.",
+                    result.Message,
+                    result.Groups.Count,
+                    result.FilteredGroupCount,
+                    result.Query.Page,
+                    result.PageCount,
+                    result.TotalFurniture,
+                    result.TotalGroups),
+            };
+
+            AddGroupLines(lines, result.Groups);
+
+            if (result.PageCount > 1)
+            {
+                lines.Add("Use /housingadvisor " + NextPageHint(result));
+            }
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
         public string RenderFurnitureGroups(IReadOnlyList<HousingFurnitureGroup> groups)
         {
             if (groups.Count == 0)
@@ -24,6 +61,23 @@ namespace EcoHousingAdvisor.Presentation
                     groups.Count),
             };
 
+            AddGroupLines(lines, groups);
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        public string RenderDebug(HousingFurnitureSnapshot snapshot)
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "Eco Housing Advisor debug: {0} furniture entries, {1} groups, generated {2:O}. Cache is active.",
+                snapshot.Furniture.Count,
+                snapshot.Groups.Count,
+                snapshot.GeneratedAt);
+        }
+
+        private static void AddGroupLines(List<string> lines, IReadOnlyList<HousingFurnitureGroup> groups)
+        {
             foreach (var categoryGroup in groups.GroupBy(group => group.Category).OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
             {
                 lines.Add(categoryGroup.Key);
@@ -39,13 +93,23 @@ namespace EcoHousingAdvisor.Presentation
                         FormatMultiplier(group.DiminishingReturnMultiplier)));
                 }
             }
-
-            return string.Join(Environment.NewLine, lines);
         }
 
         private static string FormatMultiplier(double? multiplier)
         {
             return multiplier is null ? "unknown" : multiplier.Value.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        private static string NextPageHint(HousingFurnitureQueryResult result)
+        {
+            var query = result.Query;
+            var nextPage = Math.Min(query.Page + 1, result.PageCount);
+            if (query.Mode == "category" || query.Mode == "search")
+            {
+                return string.Format(CultureInfo.InvariantCulture, "{0} {1} {2}", query.Mode, query.Text, nextPage);
+            }
+
+            return nextPage.ToString(CultureInfo.InvariantCulture);
         }
     }
 }

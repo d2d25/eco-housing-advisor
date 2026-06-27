@@ -10,6 +10,9 @@ public static class HousingAdvisorDomainTests
         GroupsByCategoryBaseValueTypeLimitAndDuplicateMultiplier();
         IgnoresZeroValueFurniture();
         RendersSimpleGroupedOutput();
+        FiltersCategoryAndPaginates();
+        SearchesFurnitureNames();
+        RendersCompactPagedOutput();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
 
@@ -58,6 +61,60 @@ public static class HousingAdvisorDomainTests
         AssertContains("base 2", output);
         AssertContains("type limit Chair", output);
         AssertContains("duplicate multiplier 0.5", output);
+    }
+
+    private static void FiltersCategoryAndPaginates()
+    {
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Hewn Chair", "Seating", 2, "Chair", 0.5),
+            Item("Wooden Table", "Seating", 1, "Table", 0.2),
+            Item("Basic Lamp", "Lighting", 1, "Light", 0.4),
+        ]);
+
+        var result = new HousingFurnitureBrowser().Query(
+            groups,
+            new HousingFurnitureQuery("category", "Seating", 1, 1));
+
+        AssertEqual(2, result.FilteredGroupCount, "filtered seating group count");
+        AssertEqual(1, result.Groups.Count, "page group count");
+        AssertEqual(2, result.PageCount, "page count");
+        AssertEqual("Seating", result.Groups[0].Category, "page category");
+    }
+
+    private static void SearchesFurnitureNames()
+    {
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Hewn Chair", "Seating", 2, "Chair", 0.5),
+            Item("Wooden Table", "Seating", 1, "Table", 0.2),
+            Item("Basic Lamp", "Lighting", 1, "Light", 0.4),
+        ]);
+
+        var result = new HousingFurnitureBrowser().Query(
+            groups,
+            new HousingFurnitureQuery("search", "lamp", 1, 8));
+
+        AssertEqual(1, result.FilteredGroupCount, "search group count");
+        AssertEqual("Lighting", result.Groups[0].Category, "search category");
+        AssertEqual("Basic Lamp", result.Groups[0].Items[0].DisplayName, "search item");
+    }
+
+    private static void RendersCompactPagedOutput()
+    {
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Hewn Chair", "Seating", 2, "Chair", 0.5),
+            Item("Wooden Table", "Seating", 1, "Table", 0.2),
+        ]);
+        var result = new HousingFurnitureBrowser().Query(
+            groups,
+            new HousingFurnitureQuery("summary", null, 1, 1));
+
+        var output = new AdvisorTextRenderer().RenderFurnitureResult(result);
+
+        AssertContains("Showing 1/2 groups, page 1/2", output);
+        AssertContains("Use /housingadvisor 2", output);
     }
 
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)

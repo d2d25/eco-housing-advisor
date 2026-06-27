@@ -526,3 +526,18 @@ Out of scope for V0.2:
 - Room-specific recommendations.
 - Real XP gain after material tier, room caps, or placed duplicates.
 - Economy/store optimization.
+
+## V0.2 Implementation Notes
+
+V0.2 adds a small browse layer over the V0 furniture snapshot:
+
+- `/housingadvisor` shows a compact first page instead of printing every group.
+- `/housingadvisor <page>` shows a summary page.
+- `/housingadvisor category <name>` filters by housing category.
+- `/housingadvisor search <text>` filters by category, type limit, item class, or display name.
+- `/housingadvisor debug` shows snapshot counts and cache timestamp.
+- `/housingadvisor refresh` rebuilds the runtime furniture snapshot.
+
+The runtime reader still avoids Eco attribute construction after server startup. It treats `WorldObjectItem.homeValue` / `HomeValue` as the source of truth and does not instantiate item display attributes. Display names are therefore currently safe class-name-based names until a side-effect-free Eco naming API is confirmed.
+
+V0.2 is still a data probe, not a room optimizer.
