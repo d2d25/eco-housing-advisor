@@ -650,9 +650,11 @@ V0.7.1 pivots the next room-advisor work toward Eco's own residency value source
 - When per-room values are readable, the tooltip now suggests concrete buy/craft candidates for the weakest rooms, using Eco furniture data and the documented room/support category rules.
 - French room labels seen in the residency panel, such as `Salon`, `Cuisine`, `Chambre`, `Salle de bain`, and `Extérieurs`, are normalized to Eco's internal room categories for advice.
 - If Eco exposes room tier in `PropertyValue`, the advice now bounds estimated XP by the room's vanilla soft/hard cap and marks suggestions as `before soft cap`, `past soft cap`, or `hard cap reached`.
+- If Eco exposes the furniture/world objects contained in a room value, the advice maps existing `TypeForRoomLimit` counts and applies the furniture duplicate multiplier before ranking suggestions.
 
 Runtime API uncertainty confirmed:
 
 - The exact internal member names used by `PropertyValue` for per-room values still need confirmation on this Eco server version.
 - The new tooltip section will say when it is attached to `PropertyValue` but cannot yet read the room list, which gives us a clean next mapping target without guessing from ownership.
-- The suggested XP shown in the residency tooltip does not yet subtract current duplicate furniture, support-category caps, or unavailable utilities.
+- Existing furniture detection is best-effort because the exact room-value object graph is still runtime-mapped by reflection.
+- The suggested XP shown in the residency tooltip does not yet subtract support-category caps or unavailable utilities.

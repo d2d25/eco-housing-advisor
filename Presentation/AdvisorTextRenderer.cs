@@ -157,6 +157,10 @@ namespace EcoHousingAdvisor.Presentation
                         room.RoomName,
                         FormatNullable(room.Value),
                         FormatNullable(room.Tier)));
+                    if (room.ExistingTypeCounts.Count > 0)
+                    {
+                        lines.Add("  mapped types: " + room.FormatKnownExistingTypes());
+                    }
                 }
 
                 if (groups != null && groups.Count > 0)
@@ -170,12 +174,13 @@ namespace EcoHousingAdvisor.Presentation
                             var firstItem = addition.Group.Items[0];
                             lines.Add(string.Format(
                                 CultureInfo.InvariantCulture,
-                                "- {0} in {1}: +{2} XP/day est. ({3}, {4})",
+                                "- {0} in {1}: +{2} XP/day est. ({3}, {4}{5})",
                                 firstItem.DisplayName,
                                 roomAdvice.Room.RoomName,
                                 HousingFurnitureFormatter.FormatBaseValue(addition.EstimatedGain),
                                 addition.Category,
-                                addition.CapNote));
+                                addition.CapNote,
+                                FormatDuplicateNote(addition)));
                             var itemAvailability = availability?.ForItem(firstItem.ItemTypeName);
                             if (itemAvailability != null)
                             {
@@ -195,7 +200,7 @@ namespace EcoHousingAdvisor.Presentation
                 lines.Add("Total read: " + HousingFurnitureFormatter.FormatBaseValue(snapshot.TotalValue.Value) + " XP/day");
             }
 
-            lines.Add("Estimates ignore current duplicates and support-category caps until the next mapping pass.");
+            lines.Add("Estimates ignore support-category caps and utility requirements until the next mapping pass.");
             return string.Join(Environment.NewLine, lines);
         }
 
@@ -310,6 +315,17 @@ namespace EcoHousingAdvisor.Presentation
             }
 
             return "Availability: not found in accessible shops; craft recipe unknown.";
+        }
+
+        private static string FormatDuplicateNote(HousingRoomAdditionAdvice addition)
+        {
+            return addition.ExistingTypeCount <= 0
+                ? string.Empty
+                : string.Format(
+                    CultureInfo.InvariantCulture,
+                    ", duplicate type x{0}, factor {1}",
+                    addition.ExistingTypeCount,
+                    HousingFurnitureFormatter.FormatMultiplier(addition.DuplicateFactor));
         }
 
         private static string FormatNullable(double? value)

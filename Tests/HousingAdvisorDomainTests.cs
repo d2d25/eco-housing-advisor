@@ -25,6 +25,8 @@ public static class HousingAdvisorDomainTests
         RendersPropertyValueTooltipSummary();
         FindsUsefulCategoriesForFrenchRoomNames();
         SuggestsPropertyAdditionsForWeakRooms();
+        AppliesDuplicatePenaltyFromMappedRoomTypes();
+        ReadsFakeRoomFurnitureTypeLimits();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
 
@@ -351,6 +353,59 @@ public static class HousingAdvisorDomainTests
         AssertEqual("past soft cap", cappedAdvice.Rooms[0].Additions[0].CapNote, "diminished cap note");
     }
 
+    private static void AppliesDuplicatePenaltyFromMappedRoomTypes()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            12,
+            [
+                new HousingPropertyRoomValue(
+                    "Salon",
+                    "Salon",
+                    1,
+                    2,
+                    new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Chair"] = 1 }),
+            ],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Great Chair", "Seating", 8, "Chair", 0.25),
+            Item("Small Couch", "Living Room", 4, "Couch", 0.5),
+        ]);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, 1, 2);
+
+        AssertEqual("Small Couch", advice.Rooms[0].Additions[0].Group.Items[0].DisplayName, "duplicate adjusted winner");
+        AssertEqual("Great Chair", advice.Rooms[0].Additions[1].Group.Items[0].DisplayName, "duplicate adjusted loser");
+        AssertEqual(1, advice.Rooms[0].Additions[1].ExistingTypeCount, "existing type count");
+        AssertEqual(0.25, advice.Rooms[0].Additions[1].DuplicateFactor, "duplicate factor");
+
+        var output = new AdvisorTextRenderer().RenderPropertyValue(property, groups);
+        AssertContains("mapped types: Chair x1", output);
+        AssertContains("duplicate type x1, factor 0.25", output);
+    }
+
+    private static void ReadsFakeRoomFurnitureTypeLimits()
+    {
+        var fake = new FakePropertyValue
+        {
+            TotalValue = 8,
+            RoomValues = new Dictionary<string, FakeRoomValue>
+            {
+                ["Salon"] = new FakeRoomValue
+                {
+                    Value = 8,
+                    Furniture = [new FakeFurniture { HomeValue = new FakeHomeValue { TypeForRoomLimit = "Chair" } }],
+                },
+            },
+        };
+
+        var snapshot = new EcoPropertyValueReader().Read(fake);
+
+        AssertEqual(1, snapshot.Rooms[0].CountExistingType("Chair"), "mapped chair count");
+    }
+
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)
     {
         return new HousingFurnitureItem(
@@ -372,6 +427,18 @@ public static class HousingAdvisorDomainTests
     private sealed class FakeRoomValue
     {
         public double Value { get; set; }
+
+        public List<FakeFurniture> Furniture { get; set; } = new List<FakeFurniture>();
+    }
+
+    private sealed class FakeFurniture
+    {
+        public FakeHomeValue HomeValue { get; set; } = new FakeHomeValue();
+    }
+
+    private sealed class FakeHomeValue
+    {
+        public string TypeForRoomLimit { get; set; }
     }
 
     private static void AssertEqual<T>(T expected, T actual, string label)

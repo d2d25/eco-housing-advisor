@@ -6,12 +6,20 @@ namespace EcoHousingAdvisor.Domain
 {
     public sealed class HousingRoomAdditionAdvice
     {
-        public HousingRoomAdditionAdvice(string category, HousingFurnitureGroup group, double estimatedGain, string capNote)
+        public HousingRoomAdditionAdvice(
+            string category,
+            HousingFurnitureGroup group,
+            double estimatedGain,
+            string capNote,
+            int existingTypeCount,
+            double duplicateFactor)
         {
             this.Category = category;
             this.Group = group;
             this.EstimatedGain = estimatedGain;
             this.CapNote = capNote;
+            this.ExistingTypeCount = existingTypeCount;
+            this.DuplicateFactor = duplicateFactor;
         }
 
         public string Category { get; }
@@ -21,6 +29,10 @@ namespace EcoHousingAdvisor.Domain
         public double EstimatedGain { get; }
 
         public string CapNote { get; }
+
+        public int ExistingTypeCount { get; }
+
+        public double DuplicateFactor { get; }
     }
 
     public sealed class HousingRoomAdvice
@@ -80,11 +92,12 @@ namespace EcoHousingAdvisor.Domain
             var limit = maxAdditions < 1 ? 3 : maxAdditions;
             var categories = HousingRoomRules.CategoriesUsefulInRoom(room.Category ?? room.RoomName);
             return categories
-                .Select(category => indexedGroups.TryGetValue(category, out var matches) && matches.Length > 0
-                    ? BuildAdditionAdvice(room, category, matches[0])
-                    : null)
+                .SelectMany(category => indexedGroups.TryGetValue(category, out var matches)
+                    ? matches.Select(match => BuildAdditionAdvice(room, category, match))
+                    : Enumerable.Empty<HousingRoomAdditionAdvice>())
                 .Where(advice => advice != null)
                 .OrderByDescending(advice => advice.EstimatedGain)
+                .ThenBy(advice => advice.ExistingTypeCount)
                 .ThenBy(advice => advice.Category, StringComparer.OrdinalIgnoreCase)
                 .Take(limit)
                 .ToArray();
@@ -92,17 +105,20 @@ namespace EcoHousingAdvisor.Domain
 
         private static HousingRoomAdditionAdvice BuildAdditionAdvice(HousingPropertyRoomValue room, string category, HousingFurnitureGroup group)
         {
+            var existingTypeCount = room.CountExistingType(group.TypeForRoomLimit);
+            var duplicateFactor = DuplicateFactor(group, existingTypeCount);
+            var duplicateAdjustedBase = group.BaseValue * duplicateFactor;
             var cap = HousingTierCaps.ForTier(room.Tier);
             if (cap == null || room.Value == null)
             {
-                return new HousingRoomAdditionAdvice(category, group, group.BaseValue, "cap unknown");
+                return new HousingRoomAdditionAdvice(category, group, duplicateAdjustedBase, "cap unknown", existingTypeCount, duplicateFactor);
             }
 
             var remainingSoft = cap.SoftCap - room.Value.Value;
             var remainingHard = cap.HardCap - room.Value.Value;
             if (remainingHard <= 0)
             {
-                return new HousingRoomAdditionAdvice(category, group, 0, "hard cap reached");
+                return new HousingRoomAdditionAdvice(category, group, 0, "hard cap reached", existingTypeCount, duplicateFactor);
             }
 
             if (remainingSoft <= 0)
@@ -110,15 +126,30 @@ namespace EcoHousingAdvisor.Domain
                 return new HousingRoomAdditionAdvice(
                     category,
                     group,
-                    Math.Min(group.BaseValue * cap.DiminishingReturnPercent, remainingHard),
-                    "past soft cap");
+                    Math.Min(duplicateAdjustedBase * cap.DiminishingReturnPercent, remainingHard),
+                    "past soft cap",
+                    existingTypeCount,
+                    duplicateFactor);
             }
 
             return new HousingRoomAdditionAdvice(
                 category,
                 group,
-                Math.Min(group.BaseValue, remainingSoft),
-                "before soft cap");
+                Math.Min(duplicateAdjustedBase, remainingSoft),
+                "before soft cap",
+                existingTypeCount,
+                duplicateFactor);
+        }
+
+        private static double DuplicateFactor(HousingFurnitureGroup group, int existingTypeCount)
+        {
+            if (existingTypeCount <= 0)
+            {
+                return 1;
+            }
+
+            var multiplier = group.DiminishingReturnMultiplier ?? 1;
+            return Math.Pow(multiplier, existingTypeCount);
         }
     }
 }

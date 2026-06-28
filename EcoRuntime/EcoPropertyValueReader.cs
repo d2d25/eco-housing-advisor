@@ -139,6 +139,7 @@ namespace EcoHousingAdvisor.EcoRuntime
                 ?? TryReadDouble(roomSource, "RoomTier")
                 ?? TryReadDouble(roomSource, "AverageTier")
                 ?? TryReadDouble(roomSource, "AvgTier");
+            var existingTypes = ReadExistingTypeCounts(roomSource);
 
             if (string.IsNullOrWhiteSpace(roomName) && string.IsNullOrWhiteSpace(category) && valueNumber == null)
             {
@@ -149,7 +150,92 @@ namespace EcoHousingAdvisor.EcoRuntime
                 string.IsNullOrWhiteSpace(roomName) ? category ?? "Room" : roomName,
                 string.IsNullOrWhiteSpace(category) ? roomName ?? "Unknown" : category,
                 valueNumber,
-                tier);
+                tier,
+                existingTypes);
+        }
+
+        private static IReadOnlyDictionary<string, int> ReadExistingTypeCounts(object roomSource)
+        {
+            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            foreach (var member in ReadMembers(roomSource))
+            {
+                if (!LooksLikeFurnitureCollection(member.Name))
+                {
+                    continue;
+                }
+
+                foreach (var item in Enumerate(member.Value).Take(80))
+                {
+                    if (item != null && !seen.Add(item))
+                    {
+                        continue;
+                    }
+
+                    var typeLimit = ReadTypeForRoomLimit(item);
+                    if (string.IsNullOrWhiteSpace(typeLimit))
+                    {
+                        continue;
+                    }
+
+                    counts[typeLimit] = counts.TryGetValue(typeLimit, out var count) ? count + 1 : 1;
+                }
+            }
+
+            return counts;
+        }
+
+        private static bool LooksLikeFurnitureCollection(string memberName)
+        {
+            return memberName.IndexOf("Furniture", StringComparison.OrdinalIgnoreCase) >= 0
+                || memberName.IndexOf("WorldObject", StringComparison.OrdinalIgnoreCase) >= 0
+                || memberName.IndexOf("Contained", StringComparison.OrdinalIgnoreCase) >= 0
+                || memberName.IndexOf("Object", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static IEnumerable<object> Enumerate(object value)
+        {
+            if (value == null || value is string)
+            {
+                yield break;
+            }
+
+            if (value is IDictionary dictionary)
+            {
+                foreach (DictionaryEntry entry in dictionary)
+                {
+                    yield return entry.Value;
+                }
+
+                yield break;
+            }
+
+            if (value is IEnumerable enumerable)
+            {
+                foreach (var entry in enumerable.Cast<object>())
+                {
+                    yield return entry;
+                }
+            }
+            else
+            {
+                yield return value;
+            }
+        }
+
+        private static string ReadTypeForRoomLimit(object source)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            return TryReadString(source, "TypeForRoomLimit")
+                ?? TryReadString(ReadMember(source, "HomeValue"), "TypeForRoomLimit")
+                ?? TryReadString(ReadMember(ReadMember(source, "Item"), "HomeValue"), "TypeForRoomLimit")
+                ?? TryReadString(ReadMember(ReadMember(source, "Stack"), "Item"), "TypeForRoomLimit")
+                ?? TryReadString(ReadMember(ReadMember(ReadMember(source, "Stack"), "Item"), "HomeValue"), "TypeForRoomLimit")
+                ?? TryReadString(ReadMember(ReadMember(source, "Parent"), "HomeValue"), "TypeForRoomLimit");
         }
 
         private static bool UnwrapKeyValuePair(object value, out object key, out object pairValue)
@@ -258,6 +344,21 @@ namespace EcoHousingAdvisor.EcoRuntime
             catch
             {
                 return null;
+            }
+        }
+
+        private sealed class ReferenceEqualityComparer : IEqualityComparer<object>
+        {
+            public static readonly ReferenceEqualityComparer Instance = new ReferenceEqualityComparer();
+
+            public new bool Equals(object x, object y)
+            {
+                return ReferenceEquals(x, y);
+            }
+
+            public int GetHashCode(object obj)
+            {
+                return obj == null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
             }
         }
     }
