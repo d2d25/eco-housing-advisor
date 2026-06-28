@@ -57,7 +57,7 @@ namespace Eco.Mods.TechTree
                 var advice = HousingAdvisorRuntime.GetPropertyAdvice(propertyValue, snapshot, furniture, availability);
                 return new TooltipSection(
                     Localizer.DoStr("Eco Housing Advisor"),
-                    Localizer.NotLocalizedStr(new AdvisorTextRenderer().RenderPropertyTooltip(snapshot, furniture.Groups, availability, advice)));
+                    HousingAdvisorRichTooltipRenderer.RenderPropertyTooltip(advice));
             }
             catch (Exception exception)
             {
