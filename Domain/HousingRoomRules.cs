@@ -111,6 +111,54 @@ namespace EcoHousingAdvisor.Domain
             return string.Join(", ", rule.UsefulRooms);
         }
 
+        public static double SupportCapPercent(string supportCategory, string primaryRoomCategory)
+        {
+            if (string.Equals(supportCategory, "Seating", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0.3;
+            }
+
+            if (string.Equals(supportCategory, "Decoration", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(supportCategory, "Lighting", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0.5;
+            }
+
+            if (string.Equals(supportCategory, "Cultural", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(primaryRoomCategory, "Outdoor", StringComparison.OrdinalIgnoreCase))
+            {
+                return 1;
+            }
+
+            if (string.Equals(supportCategory, "Cultural", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0.2;
+            }
+
+            if (string.Equals(supportCategory, "Living Room", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(primaryRoomCategory, "Bedroom", StringComparison.OrdinalIgnoreCase))
+            {
+                return 1;
+            }
+
+            return 1;
+        }
+
+        public static double PropertyCategoryCapPercent(string roomCategory)
+        {
+            if (string.Equals(roomCategory, "Bathroom", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0.33;
+            }
+
+            if (string.Equals(roomCategory, "Outdoor", StringComparison.OrdinalIgnoreCase))
+            {
+                return 1;
+            }
+
+            return 0;
+        }
+
         public static IReadOnlyList<string> CategoriesUsefulInRoom(string roomName)
         {
             if (string.IsNullOrWhiteSpace(roomName))

@@ -16,10 +16,11 @@ namespace EcoHousingAdvisor.EcoRuntime
             var rooms = new List<HousingPropertyRoomValue>();
             if (propertyValue == null)
             {
-                return new HousingPropertyValueSnapshot("null", null, rooms, new[] { "PropertyValue was null." }, DateTimeOffset.UtcNow);
+                return new HousingPropertyValueSnapshot("null", null, null, null, rooms, new[] { "PropertyValue was null." }, DateTimeOffset.UtcNow);
             }
 
             var totalValue = ReadTotalValue(propertyValue);
+            var residentCount = CountEnumerable(ReadMember(ReadMember(ReadMember(propertyValue, "Deed"), "Residency"), "Residents"));
             foreach (var member in ReadMembers(propertyValue))
             {
                 if (!LooksLikeRoomCollection(member.Name))
@@ -36,6 +37,11 @@ namespace EcoHousingAdvisor.EcoRuntime
                 }
             }
 
+            var roomSum = rooms.Sum(room => room.Value ?? 0);
+            var finalMultiplier = totalValue != null && roomSum > 0
+                ? totalValue.Value / roomSum
+                : (double?)null;
+
             if (rooms.Count == 0)
             {
                 warnings.Add("PropertyValue room list was not readable yet; runtime member mapping needs confirmation on this Eco version.");
@@ -44,6 +50,8 @@ namespace EcoHousingAdvisor.EcoRuntime
             return new HousingPropertyValueSnapshot(
                 propertyValue.GetType().FullName ?? propertyValue.GetType().Name,
                 totalValue,
+                finalMultiplier,
+                residentCount,
                 rooms,
                 warnings,
                 DateTimeOffset.UtcNow);
@@ -120,7 +128,10 @@ namespace EcoHousingAdvisor.EcoRuntime
                 ? pairValue
                 : value;
             var categorySource = key ?? pairKey ?? roomSource;
+            var roomValue = ReadMember(roomSource, "RoomValue");
+            var roomStats = ReadMember(roomSource, "RoomStats");
             var category = NormalizeCategory(ReadDisplayString(categorySource)
+                ?? TryReadString(roomValue, "RoomCategory")
                 ?? TryReadString(roomSource, "Category")
                 ?? TryReadString(roomSource, "RoomCategory")
                 ?? TryReadString(roomSource, "BestRoomCategory"));
@@ -129,17 +140,22 @@ namespace EcoHousingAdvisor.EcoRuntime
                 TryReadString(roomSource, "Name")
                 ?? TryReadString(roomSource, "DisplayName")
                 ?? category);
-            var valueNumber = TryReadDouble(roomSource, "Value")
+            var valueNumber = TryReadDouble(roomValue, "Value")
+                ?? TryReadDouble(roomSource, "Value")
                 ?? TryReadDouble(roomSource, "Total")
                 ?? TryReadDouble(roomSource, "TotalValue")
                 ?? TryReadDouble(roomSource, "HousingValue")
                 ?? TryReadDirectDouble(roomSource);
-            var tier = TryReadDouble(roomSource, "Tier")
+            var tierObject = ReadMember(roomValue, "Tier");
+            var tier = TryReadDouble(tierObject, "TierVal")
+                ?? TryReadDouble(roomStats, "AverageTier")
+                ?? TryReadDouble(roomSource, "Tier")
                 ?? TryReadDouble(roomSource, "MaterialTier")
                 ?? TryReadDouble(roomSource, "RoomTier")
                 ?? TryReadDouble(roomSource, "AverageTier")
                 ?? TryReadDouble(roomSource, "AvgTier");
             var existingTypes = ReadExistingTypeCounts(roomSource);
+            var categoryValues = ReadCategoryValues(roomSource);
 
             if (string.IsNullOrWhiteSpace(roomName) && string.IsNullOrWhiteSpace(category) && valueNumber == null)
             {
@@ -151,7 +167,38 @@ namespace EcoHousingAdvisor.EcoRuntime
                 string.IsNullOrWhiteSpace(category) ? roomName ?? "Unknown" : category,
                 valueNumber,
                 tier,
-                existingTypes);
+                existingTypes,
+                categoryValues);
+        }
+
+        private static IReadOnlyDictionary<string, double> ReadCategoryValues(object roomSource)
+        {
+            var values = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            foreach (var member in ReadMembers(roomSource))
+            {
+                if (!LooksLikeFurnitureCollection(member.Name))
+                {
+                    continue;
+                }
+
+                foreach (var item in Enumerate(member.Value).Take(80))
+                {
+                    var category = NormalizeCategory(ReadDisplayString(ReadMember(ReadMember(item, "HomeValue"), "Category"))
+                        ?? ReadDisplayString(ReadMember(ReadMember(ReadMember(item, "Item"), "HomeValue"), "Category"))
+                        ?? ReadDisplayString(ReadMember(ReadMember(item, "Parent"), "HomeValue")));
+                    var value = TryReadDouble(item, "FurnishingValue")
+                        ?? TryReadDouble(ReadMember(item, "HomeValue"), "BaseValue")
+                        ?? TryReadDouble(ReadMember(ReadMember(item, "Item"), "HomeValue"), "BaseValue");
+                    if (string.IsNullOrWhiteSpace(category) || value == null)
+                    {
+                        continue;
+                    }
+
+                    values[category] = values.TryGetValue(category, out var existing) ? existing + value.Value : value.Value;
+                }
+            }
+
+            return values;
         }
 
         private static IReadOnlyDictionary<string, int> ReadExistingTypeCounts(object roomSource)
@@ -345,6 +392,32 @@ namespace EcoHousingAdvisor.EcoRuntime
             {
                 return null;
             }
+        }
+
+        private static int? CountEnumerable(object value)
+        {
+            if (value == null || value is string)
+            {
+                return null;
+            }
+
+            if (value is ICollection collection)
+            {
+                return collection.Count;
+            }
+
+            if (value is IEnumerable enumerable)
+            {
+                var count = 0;
+                foreach (var _ in enumerable)
+                {
+                    count++;
+                }
+
+                return count;
+            }
+
+            return null;
         }
 
         private sealed class ReferenceEqualityComparer : IEqualityComparer<object>

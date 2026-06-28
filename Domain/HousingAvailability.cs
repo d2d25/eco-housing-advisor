@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace EcoHousingAdvisor.Domain
 {
@@ -36,6 +37,9 @@ namespace EcoHousingAdvisor.Domain
         public IReadOnlyList<HousingStoreOffer> StoreOffers { get; }
 
         public IReadOnlyList<HousingCraftHint> CraftHints { get; }
+
+        public bool IsAvailable => this.StoreOffers.Count > 0
+            || this.CraftHints.Any(craft => craft.Crafters.Count > 0);
 
         public static HousingItemAvailability Empty(string itemTypeName)
         {

@@ -11,13 +11,15 @@ namespace EcoHousingAdvisor.Domain
             string category,
             double? value,
             double? tier = null,
-            IReadOnlyDictionary<string, int> existingTypeCounts = null)
+            IReadOnlyDictionary<string, int> existingTypeCounts = null,
+            IReadOnlyDictionary<string, double> categoryValues = null)
         {
             this.RoomName = roomName;
             this.Category = category;
             this.Value = value;
             this.Tier = tier;
             this.ExistingTypeCounts = existingTypeCounts ?? new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            this.CategoryValues = categoryValues ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         }
 
         public string RoomName { get; }
@@ -29,6 +31,8 @@ namespace EcoHousingAdvisor.Domain
         public double? Tier { get; }
 
         public IReadOnlyDictionary<string, int> ExistingTypeCounts { get; }
+
+        public IReadOnlyDictionary<string, double> CategoryValues { get; }
 
         public int CountExistingType(string typeForRoomLimit)
         {
@@ -48,6 +52,20 @@ namespace EcoHousingAdvisor.Domain
                 ? "none mapped"
                 : string.Join(", ", this.ExistingTypeCounts.OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase).Select(entry => entry.Key + " x" + entry.Value));
         }
+
+        public double CategoryValue(string category)
+        {
+            if (string.IsNullOrWhiteSpace(category))
+            {
+                return 0;
+            }
+
+            return this.CategoryValues.TryGetValue(category, out var value)
+                ? value
+                : string.Equals(category, this.Category, StringComparison.OrdinalIgnoreCase) && this.Value != null
+                    ? this.Value.Value
+                    : 0;
+        }
     }
 
     public sealed class HousingPropertyValueSnapshot
@@ -55,12 +73,16 @@ namespace EcoHousingAdvisor.Domain
         public HousingPropertyValueSnapshot(
             string sourceType,
             double? totalValue,
+            double? finalMultiplier,
+            int? residentCount,
             IReadOnlyList<HousingPropertyRoomValue> rooms,
             IReadOnlyList<string> warnings,
             DateTimeOffset generatedAt)
         {
             this.SourceType = sourceType;
             this.TotalValue = totalValue;
+            this.FinalMultiplier = finalMultiplier;
+            this.ResidentCount = residentCount;
             this.Rooms = rooms;
             this.Warnings = warnings;
             this.GeneratedAt = generatedAt;
@@ -69,6 +91,10 @@ namespace EcoHousingAdvisor.Domain
         public string SourceType { get; }
 
         public double? TotalValue { get; }
+
+        public double? FinalMultiplier { get; }
+
+        public int? ResidentCount { get; }
 
         public IReadOnlyList<HousingPropertyRoomValue> Rooms { get; }
 

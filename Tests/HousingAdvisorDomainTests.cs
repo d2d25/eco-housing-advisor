@@ -27,6 +27,10 @@ public static class HousingAdvisorDomainTests
         SuggestsPropertyAdditionsForWeakRooms();
         AppliesDuplicatePenaltyFromMappedRoomTypes();
         ReadsFakeRoomFurnitureTypeLimits();
+        HidesUnavailablePropertyAdvice();
+        AppliesFinalPropertyMultiplier();
+        AppliesSupportCategoryCap();
+        AppliesBathroomPropertyCap();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
 
@@ -278,13 +282,15 @@ public static class HousingAdvisorDomainTests
         var snapshot = new HousingPropertyValueSnapshot(
             "FakePropertyValue",
             21.2,
+            1,
+            1,
             [new HousingPropertyRoomValue("Bedroom", "Bedroom", 8.4, 2)],
             [],
             DateTimeOffset.UtcNow);
 
         var output = new AdvisorTextRenderer().RenderPropertyValue(snapshot);
 
-        AssertContains("Advisor sees 1 residence rooms from PropertyValue.", output);
+        AssertContains("Best useful additions (1 residence rooms):", output);
         AssertContains("- Bedroom: 8.4 XP/day, tier 2", output);
         AssertContains("Total read: 21.2 XP/day", output);
     }
@@ -306,6 +312,8 @@ public static class HousingAdvisorDomainTests
         var property = new HousingPropertyValueSnapshot(
             "FakePropertyValue",
             30,
+            1,
+            1,
             [
                 new HousingPropertyRoomValue("Salon", "Salon", 6.3, 2),
                 new HousingPropertyRoomValue("Cuisine", "Cuisine", 11.5, 2),
@@ -319,16 +327,17 @@ public static class HousingAdvisorDomainTests
             Item("Table Lamp", "Lighting", 3, "Lamp", 0.5),
             Item("Small Couch", "Living Room", 4, "Couch", 0.5),
         ]);
+        var allAvailable = AvailabilityFor(groups);
 
-        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, 1, 3);
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, allAvailable, 1, 3);
         AssertEqual(1, advice.Rooms.Count, "advice room count");
         AssertEqual("Salon", advice.Rooms[0].Room.RoomName, "weakest room");
         AssertContains("Big Painting", advice.Rooms[0].Additions[0].Group.Items[0].DisplayName);
         AssertEqual(3.7, advice.Rooms[0].Additions[0].EstimatedGain, "soft cap bounded gain");
         AssertEqual("before soft cap", advice.Rooms[0].Additions[0].CapNote, "soft cap note");
 
-        var output = new AdvisorTextRenderer().RenderPropertyValue(property, groups);
-        AssertContains("Buy/craft for Salon:", output);
+        var output = new AdvisorTextRenderer().RenderPropertyValue(property, groups, allAvailable);
+        AssertContains("Salon 6.3 XP/day:", output);
         AssertContains("Big Painting in Salon", output);
         AssertContains("before soft cap", output);
 
@@ -345,10 +354,12 @@ public static class HousingAdvisorDomainTests
         var cappedProperty = new HousingPropertyValueSnapshot(
             "FakePropertyValue",
             30,
+            1,
+            1,
             [new HousingPropertyRoomValue("Salon", "Salon", 12, 2)],
             [],
             DateTimeOffset.UtcNow);
-        var cappedAdvice = new HousingPropertyAdviceEngine().BuildAdvice(cappedProperty, groups, 1, 1);
+        var cappedAdvice = new HousingPropertyAdviceEngine().BuildAdvice(cappedProperty, groups, allAvailable, 1, 1);
         AssertEqual(3.25, cappedAdvice.Rooms[0].Additions[0].EstimatedGain, "diminished gain");
         AssertEqual("past soft cap", cappedAdvice.Rooms[0].Additions[0].CapNote, "diminished cap note");
     }
@@ -358,6 +369,8 @@ public static class HousingAdvisorDomainTests
         var property = new HousingPropertyValueSnapshot(
             "FakePropertyValue",
             12,
+            1,
+            1,
             [
                 new HousingPropertyRoomValue(
                     "Salon",
@@ -373,15 +386,16 @@ public static class HousingAdvisorDomainTests
             Item("Great Chair", "Seating", 8, "Chair", 0.25),
             Item("Small Couch", "Living Room", 4, "Couch", 0.5),
         ]);
+        var allAvailable = AvailabilityFor(groups);
 
-        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, 1, 2);
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, allAvailable, 1, 2);
 
         AssertEqual("Small Couch", advice.Rooms[0].Additions[0].Group.Items[0].DisplayName, "duplicate adjusted winner");
         AssertEqual("Great Chair", advice.Rooms[0].Additions[1].Group.Items[0].DisplayName, "duplicate adjusted loser");
         AssertEqual(1, advice.Rooms[0].Additions[1].ExistingTypeCount, "existing type count");
         AssertEqual(0.25, advice.Rooms[0].Additions[1].DuplicateFactor, "duplicate factor");
 
-        var output = new AdvisorTextRenderer().RenderPropertyValue(property, groups);
+        var output = new AdvisorTextRenderer().RenderPropertyValue(property, groups, allAvailable);
         AssertContains("mapped types: Chair x1", output);
         AssertContains("duplicate type x1, factor 0.25", output);
     }
@@ -406,6 +420,106 @@ public static class HousingAdvisorDomainTests
         AssertEqual(1, snapshot.Rooms[0].CountExistingType("Chair"), "mapped chair count");
     }
 
+    private static void HidesUnavailablePropertyAdvice()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            12,
+            1,
+            1,
+            [new HousingPropertyRoomValue("Salon", "Salon", 1, 2)],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Unavailable Painting", "Decoration", 5, "Painting", 0.5),
+        ]);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(
+            property,
+            groups,
+            new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>()),
+            1,
+            3);
+
+        AssertEqual(0, advice.Rooms.Count, "unavailable advice hidden");
+    }
+
+    private static void AppliesFinalPropertyMultiplier()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            24,
+            2,
+            2,
+            [new HousingPropertyRoomValue("Salon", "Salon", 1, 2)],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Small Couch", "Living Room", 4, "Couch", 0.5),
+        ]);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 1, 1);
+
+        AssertEqual(8, advice.Rooms[0].Additions[0].EstimatedGain, "final multiplier gain");
+    }
+
+    private static void AppliesSupportCategoryCap()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            20,
+            1,
+            1,
+            [
+                new HousingPropertyRoomValue(
+                    "Salon",
+                    "Living Room",
+                    8,
+                    3,
+                    null,
+                    new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["Living Room"] = 8,
+                        ["Decoration"] = 3.5,
+                    }),
+            ],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Big Painting", "Decoration", 5, "Painting", 0.5),
+        ]);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 1, 1);
+
+        AssertEqual(0.5, advice.Rooms[0].Additions[0].EstimatedGain, "support cap remaining");
+    }
+
+    private static void AppliesBathroomPropertyCap()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            20,
+            1,
+            1,
+            [
+                new HousingPropertyRoomValue("Salon", "Living Room", 10, 3),
+                new HousingPropertyRoomValue("Salle de bain", "Bathroom", 3, 3),
+            ],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Fancy Toilet", "Bathroom", 5, "Toilet", 0.5),
+        ]);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 2, 1);
+
+        AssertEqual(0.3, Math.Round(advice.Rooms[0].Additions[0].EstimatedGain, 2), "bathroom cap remaining");
+    }
+
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)
     {
         return new HousingFurnitureItem(
@@ -415,6 +529,16 @@ public static class HousingAdvisorDomainTests
             baseValue,
             typeLimit,
             duplicateMultiplier);
+    }
+
+    private static HousingAvailabilitySnapshot AvailabilityFor(IReadOnlyList<HousingFurnitureGroup> groups)
+    {
+        return new HousingAvailabilitySnapshot(groups.ToDictionary(
+            group => group.Items[0].ItemTypeName,
+            group => new HousingItemAvailability(
+                group.Items[0].ItemTypeName,
+                [new HousingStoreOffer("Test Shop", "Ada", 1, "Credits", 1)],
+                [])));
     }
 
     private sealed class FakePropertyValue

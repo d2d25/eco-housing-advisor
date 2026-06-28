@@ -139,14 +139,15 @@ namespace EcoHousingAdvisor.Presentation
         public string RenderPropertyValue(
             HousingPropertyValueSnapshot snapshot,
             IReadOnlyList<HousingFurnitureGroup> groups = null,
-            HousingAvailabilitySnapshot availability = null)
+            HousingAvailabilitySnapshot availability = null,
+            HousingPropertyAdvice advice = null)
         {
             var lines = new List<string>();
             if (snapshot.Rooms.Count > 0)
             {
                 lines.Add(string.Format(
                     CultureInfo.InvariantCulture,
-                    "Advisor sees {0} residence rooms from PropertyValue.",
+                    "Best useful additions ({0} residence rooms):",
                     snapshot.Rooms.Count));
 
                 foreach (var room in snapshot.Rooms.Take(5))
@@ -163,12 +164,20 @@ namespace EcoHousingAdvisor.Presentation
                     }
                 }
 
-                if (groups != null && groups.Count > 0)
+                if (advice == null && groups != null && groups.Count > 0)
                 {
-                    var advice = new HousingPropertyAdviceEngine().BuildAdvice(snapshot, groups, 2, 3);
+                    advice = new HousingPropertyAdviceEngine().BuildAdvice(snapshot, groups, availability ?? new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>()), 2, 3);
+                }
+
+                if (advice != null)
+                {
                     foreach (var roomAdvice in advice.Rooms)
                     {
-                        lines.Add("Buy/craft for " + roomAdvice.Room.RoomName + ":");
+                        lines.Add(string.Format(
+                            CultureInfo.InvariantCulture,
+                            "{0} {1} XP/day:",
+                            roomAdvice.Room.RoomName,
+                            FormatNullable(roomAdvice.Room.Value)));
                         foreach (var addition in roomAdvice.Additions)
                         {
                             var firstItem = addition.Group.Items[0];
@@ -181,11 +190,7 @@ namespace EcoHousingAdvisor.Presentation
                                 addition.Category,
                                 addition.CapNote,
                                 FormatDuplicateNote(addition)));
-                            var itemAvailability = availability?.ForItem(firstItem.ItemTypeName);
-                            if (itemAvailability != null)
-                            {
-                                lines.Add("  " + FormatAvailability(itemAvailability));
-                            }
+                            lines.Add("  " + FormatAvailability(addition.Availability));
                         }
                     }
                 }
@@ -200,7 +205,14 @@ namespace EcoHousingAdvisor.Presentation
                 lines.Add("Total read: " + HousingFurnitureFormatter.FormatBaseValue(snapshot.TotalValue.Value) + " XP/day");
             }
 
-            lines.Add("Estimates ignore support-category caps and utility requirements until the next mapping pass.");
+            if (snapshot.ResidentCount != null)
+            {
+                lines.Add("Residents: " + snapshot.ResidentCount.Value.ToString(CultureInfo.InvariantCulture));
+            }
+
+            lines.Add(snapshot.FinalMultiplier == null
+                ? "XP values are est.; final property multiplier was not fully mapped."
+                : "XP values are est.; utility requirements are not checked yet.");
             return string.Join(Environment.NewLine, lines);
         }
 

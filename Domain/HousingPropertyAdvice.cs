@@ -12,7 +12,8 @@ namespace EcoHousingAdvisor.Domain
             double estimatedGain,
             string capNote,
             int existingTypeCount,
-            double duplicateFactor)
+            double duplicateFactor,
+            HousingItemAvailability availability)
         {
             this.Category = category;
             this.Group = group;
@@ -20,6 +21,7 @@ namespace EcoHousingAdvisor.Domain
             this.CapNote = capNote;
             this.ExistingTypeCount = existingTypeCount;
             this.DuplicateFactor = duplicateFactor;
+            this.Availability = availability;
         }
 
         public string Category { get; }
@@ -33,6 +35,8 @@ namespace EcoHousingAdvisor.Domain
         public int ExistingTypeCount { get; }
 
         public double DuplicateFactor { get; }
+
+        public HousingItemAvailability Availability { get; }
     }
 
     public sealed class HousingRoomAdvice
@@ -63,6 +67,7 @@ namespace EcoHousingAdvisor.Domain
         public HousingPropertyAdvice BuildAdvice(
             HousingPropertyValueSnapshot property,
             IReadOnlyList<HousingFurnitureGroup> groups,
+            HousingAvailabilitySnapshot availability,
             int maxRooms,
             int maxAdditionsPerRoom)
         {
@@ -77,7 +82,7 @@ namespace EcoHousingAdvisor.Domain
                 .OrderBy(room => room.Value ?? double.MaxValue)
                 .ThenBy(room => room.RoomName, StringComparer.OrdinalIgnoreCase)
                 .Take(maxRooms < 1 ? 2 : maxRooms)
-                .Select(room => new HousingRoomAdvice(room, BuildAdditions(room, indexedGroups, maxAdditionsPerRoom)))
+                .Select(room => new HousingRoomAdvice(room, BuildAdditions(property, room, indexedGroups, availability, maxAdditionsPerRoom)))
                 .Where(advice => advice.Additions.Count > 0)
                 .ToArray();
 
@@ -85,17 +90,19 @@ namespace EcoHousingAdvisor.Domain
         }
 
         private static IReadOnlyList<HousingRoomAdditionAdvice> BuildAdditions(
+            HousingPropertyValueSnapshot property,
             HousingPropertyRoomValue room,
             IReadOnlyDictionary<string, HousingFurnitureGroup[]> indexedGroups,
+            HousingAvailabilitySnapshot availability,
             int maxAdditions)
         {
             var limit = maxAdditions < 1 ? 3 : maxAdditions;
             var categories = HousingRoomRules.CategoriesUsefulInRoom(room.Category ?? room.RoomName);
             return categories
                 .SelectMany(category => indexedGroups.TryGetValue(category, out var matches)
-                    ? matches.Select(match => BuildAdditionAdvice(room, category, match))
+                    ? matches.Select(match => BuildAdditionAdvice(property, room, category, match, availability.ForItem(match.Items[0].ItemTypeName)))
                     : Enumerable.Empty<HousingRoomAdditionAdvice>())
-                .Where(advice => advice != null)
+                .Where(advice => advice != null && advice.EstimatedGain > 0 && advice.Availability.IsAvailable)
                 .OrderByDescending(advice => advice.EstimatedGain)
                 .ThenBy(advice => advice.ExistingTypeCount)
                 .ThenBy(advice => advice.Category, StringComparer.OrdinalIgnoreCase)
@@ -103,22 +110,29 @@ namespace EcoHousingAdvisor.Domain
                 .ToArray();
         }
 
-        private static HousingRoomAdditionAdvice BuildAdditionAdvice(HousingPropertyRoomValue room, string category, HousingFurnitureGroup group)
+        private static HousingRoomAdditionAdvice BuildAdditionAdvice(
+            HousingPropertyValueSnapshot property,
+            HousingPropertyRoomValue room,
+            string category,
+            HousingFurnitureGroup group,
+            HousingItemAvailability availability)
         {
             var existingTypeCount = room.CountExistingType(group.TypeForRoomLimit);
             var duplicateFactor = DuplicateFactor(group, existingTypeCount);
-            var duplicateAdjustedBase = group.BaseValue * duplicateFactor;
+            var duplicateAdjustedBase = ApplySupportCap(room, category, group.BaseValue * duplicateFactor);
             var cap = HousingTierCaps.ForTier(room.Tier);
+            var finalMultiplier = property.FinalMultiplier ?? 1;
             if (cap == null || room.Value == null)
             {
-                return new HousingRoomAdditionAdvice(category, group, duplicateAdjustedBase, "cap unknown", existingTypeCount, duplicateFactor);
+                return new HousingRoomAdditionAdvice(category, group, duplicateAdjustedBase * finalMultiplier, "cap unknown", existingTypeCount, duplicateFactor, availability);
             }
 
             var remainingSoft = cap.SoftCap - room.Value.Value;
             var remainingHard = cap.HardCap - room.Value.Value;
+            remainingHard = ApplyPropertyCategoryCap(property, room, remainingHard);
             if (remainingHard <= 0)
             {
-                return new HousingRoomAdditionAdvice(category, group, 0, "hard cap reached", existingTypeCount, duplicateFactor);
+                return new HousingRoomAdditionAdvice(category, group, 0, "hard cap reached", existingTypeCount, duplicateFactor, availability);
             }
 
             if (remainingSoft <= 0)
@@ -126,19 +140,21 @@ namespace EcoHousingAdvisor.Domain
                 return new HousingRoomAdditionAdvice(
                     category,
                     group,
-                    Math.Min(duplicateAdjustedBase * cap.DiminishingReturnPercent, remainingHard),
+                    Math.Min(duplicateAdjustedBase * cap.DiminishingReturnPercent, remainingHard) * finalMultiplier,
                     "past soft cap",
                     existingTypeCount,
-                    duplicateFactor);
+                    duplicateFactor,
+                    availability);
             }
 
             return new HousingRoomAdditionAdvice(
                 category,
                 group,
-                Math.Min(duplicateAdjustedBase, remainingSoft),
+                Math.Min(duplicateAdjustedBase, Math.Min(remainingSoft, remainingHard)) * finalMultiplier,
                 "before soft cap",
                 existingTypeCount,
-                duplicateFactor);
+                duplicateFactor,
+                availability);
         }
 
         private static double DuplicateFactor(HousingFurnitureGroup group, int existingTypeCount)
@@ -150,6 +166,43 @@ namespace EcoHousingAdvisor.Domain
 
             var multiplier = group.DiminishingReturnMultiplier ?? 1;
             return Math.Pow(multiplier, existingTypeCount);
+        }
+
+        private static double ApplySupportCap(HousingPropertyRoomValue room, string candidateCategory, double candidateValue)
+        {
+            var primary = HousingRoomRules.NormalizeRoomName(room.Category ?? room.RoomName);
+            if (string.Equals(candidateCategory, primary, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidateValue;
+            }
+
+            var primaryValue = room.CategoryValue(primary);
+            if (primaryValue <= 0)
+            {
+                return candidateValue;
+            }
+
+            var cap = HousingRoomRules.SupportCapPercent(candidateCategory, primary) * primaryValue;
+            var existingSupport = room.CategoryValue(candidateCategory);
+            return Math.Min(candidateValue, Math.Max(0, cap - existingSupport));
+        }
+
+        private static double ApplyPropertyCategoryCap(HousingPropertyValueSnapshot property, HousingPropertyRoomValue room, double remainingHard)
+        {
+            var roomCategory = HousingRoomRules.NormalizeRoomName(room.Category ?? room.RoomName);
+            var capPercent = HousingRoomRules.PropertyCategoryCapPercent(roomCategory);
+            if (capPercent <= 0)
+            {
+                return remainingHard;
+            }
+
+            var uncappedTotal = property.Rooms
+                .Where(other => HousingRoomRules.PropertyCategoryCapPercent(other.Category) <= 0)
+                .Sum(other => other.Value ?? 0);
+            var currentCategoryTotal = property.Rooms
+                .Where(other => string.Equals(HousingRoomRules.NormalizeRoomName(other.Category), roomCategory, StringComparison.OrdinalIgnoreCase))
+                .Sum(other => other.Value ?? 0);
+            return Math.Min(remainingHard, Math.Max(0, capPercent * uncappedTotal - currentCategoryTotal));
         }
     }
 }

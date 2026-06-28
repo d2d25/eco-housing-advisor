@@ -658,3 +658,18 @@ Runtime API uncertainty confirmed:
 - The new tooltip section will say when it is attached to `PropertyValue` but cannot yet read the room list, which gives us a clean next mapping target without guessing from ownership.
 - Existing furniture detection is best-effort because the exact room-value object graph is still runtime-mapped by reflection.
 - The suggested XP shown in the residency tooltip does not yet subtract support-category caps or unavailable utilities.
+
+## V0.8 Notes
+
+V0.8 moves the residency tooltip toward a playable pre-V1 advisor:
+
+- The tooltip only shows suggestions that are buyable in an active store or craftable by at least one known crafter.
+- Advice is limited to the weakest two rooms and three additions per room to avoid expensive hover-time work.
+- Availability is cached per player for 30 seconds, and property advice is cached per property-value object for 10 seconds.
+- Estimated gain now accounts for duplicate furniture type penalties, support-category caps, room tier caps, bathroom/outdoor-style property category caps, and the final property multiplier when readable from the current `PropertyValue`.
+- The implementation intentionally does not spawn fake houses, players, or residences. Eco's real `PropertyValue` remains the source of truth, while delta scoring is computed from the already loaded runtime state.
+
+Runtime API uncertainty confirmed:
+
+- Eco's exact property calculation depends on real `Room`, `RoomStats`, `WorldObject`, `HousingComponent`, and `Deed` instances. A no-side-effect fake residence is not currently safe.
+- Utility requirements are still not checked in V0.8, so unavailable-power/water/chimney constraints may still need a later blocker pass.

@@ -50,9 +50,10 @@ namespace Eco.Mods.TechTree
                 var snapshot = new EcoPropertyValueReader().Read(propertyValue);
                 var furniture = HousingAdvisorRuntime.GetSnapshot(false);
                 var availability = HousingAdvisorRuntime.GetAvailability(user, furniture);
+                var advice = HousingAdvisorRuntime.GetPropertyAdvice(propertyValue, snapshot, furniture, availability);
                 return new TooltipSection(
                     Localizer.DoStr("Eco Housing Advisor"),
-                    Localizer.NotLocalized(new AdvisorTextRenderer().RenderPropertyValue(snapshot, furniture.Groups, availability)));
+                    Localizer.NotLocalized(new AdvisorTextRenderer().RenderPropertyValue(snapshot, furniture.Groups, availability, advice)));
             }
             catch (Exception exception)
             {
