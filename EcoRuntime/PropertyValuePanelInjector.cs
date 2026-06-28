@@ -46,9 +46,9 @@ namespace EcoHousingAdvisor.EcoRuntime
                     return false;
                 }
 
-                var currentSummary = propertyValue.Summary.ToString();
-                var cleanedSummary = RemoveExistingAdvisorBlock(currentSummary);
-                propertyValue.Summary = Localizer.NotLocalized(cleanedSummary.TrimEnd() + Environment.NewLine + Environment.NewLine + Marker + Environment.NewLine + advisorText);
+                propertyValue.Summary = AppendAdvisorBlock(propertyValue.Summary.ToString(), advisorText);
+                propertyValue.Description = AppendAdvisorBlock(propertyValue.Description.ToString(), advisorText);
+                propertyValue.Appendix = AppendAdvisorBlock(propertyValue.Appendix.ToString(), advisorText);
                 return true;
             }
             catch (Exception exception)
@@ -68,6 +68,12 @@ namespace EcoHousingAdvisor.EcoRuntime
 
             var markerIndex = text.IndexOf(Marker, StringComparison.Ordinal);
             return markerIndex < 0 ? text : text.Substring(0, markerIndex);
+        }
+
+        private static LocString AppendAdvisorBlock(string currentText, string advisorText)
+        {
+            var cleaned = RemoveExistingAdvisorBlock(currentText).TrimEnd();
+            return Localizer.NotLocalized(cleaned + Environment.NewLine + Environment.NewLine + Marker + Environment.NewLine + advisorText);
         }
     }
 }
