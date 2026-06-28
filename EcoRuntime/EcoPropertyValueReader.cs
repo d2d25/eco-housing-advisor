@@ -183,12 +183,10 @@ namespace EcoHousingAdvisor.EcoRuntime
 
                 foreach (var item in Enumerate(member.Value).Take(80))
                 {
-                    var category = NormalizeCategory(ReadDisplayString(ReadMember(ReadMember(item, "HomeValue"), "Category"))
-                        ?? ReadDisplayString(ReadMember(ReadMember(ReadMember(item, "Item"), "HomeValue"), "Category"))
-                        ?? ReadDisplayString(ReadMember(ReadMember(item, "Parent"), "HomeValue")));
+                    var homeValue = ReadHomeValue(item);
+                    var category = NormalizeCategory(ReadDisplayString(ReadMember(homeValue, "Category")));
                     var value = TryReadDouble(item, "FurnishingValue")
-                        ?? TryReadDouble(ReadMember(item, "HomeValue"), "BaseValue")
-                        ?? TryReadDouble(ReadMember(ReadMember(item, "Item"), "HomeValue"), "BaseValue");
+                        ?? TryReadDouble(homeValue, "BaseValue");
                     if (string.IsNullOrWhiteSpace(category) || value == null)
                     {
                         continue;
@@ -278,11 +276,57 @@ namespace EcoHousingAdvisor.EcoRuntime
             }
 
             return TryReadString(source, "TypeForRoomLimit")
-                ?? TryReadString(ReadMember(source, "HomeValue"), "TypeForRoomLimit")
-                ?? TryReadString(ReadMember(ReadMember(source, "Item"), "HomeValue"), "TypeForRoomLimit")
-                ?? TryReadString(ReadMember(ReadMember(source, "Stack"), "Item"), "TypeForRoomLimit")
-                ?? TryReadString(ReadMember(ReadMember(ReadMember(source, "Stack"), "Item"), "HomeValue"), "TypeForRoomLimit")
-                ?? TryReadString(ReadMember(ReadMember(source, "Parent"), "HomeValue"), "TypeForRoomLimit");
+                ?? TryReadString(ReadHomeValue(source), "TypeForRoomLimit");
+        }
+
+        private static object ReadHomeValue(object source)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            return ReadMember(source, "HomeValue")
+                ?? ReadMember(InvokeGetComponent(source, "HousingComponent"), "HomeValue")
+                ?? ReadMember(ReadMember(source, "Item"), "HomeValue")
+                ?? ReadMember(InvokeGetComponent(ReadMember(source, "Parent"), "HousingComponent"), "HomeValue")
+                ?? ReadMember(ReadMember(ReadMember(source, "Stack"), "Item"), "HomeValue")
+                ?? ReadMember(ReadMember(source, "Parent"), "HomeValue");
+        }
+
+        private static object InvokeGetComponent(object source, string componentTypeName)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            var componentType = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(SafeGetTypes)
+                .FirstOrDefault(type => string.Equals(type.Name, componentTypeName, StringComparison.Ordinal));
+            if (componentType == null)
+            {
+                return null;
+            }
+
+            var method = source.GetType()
+                .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(candidate => candidate.Name == "GetComponent"
+                    && candidate.IsGenericMethodDefinition
+                    && candidate.GetParameters().Length == 0);
+            if (method == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return method.MakeGenericMethod(componentType).Invoke(source, null);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static bool UnwrapKeyValuePair(object value, out object key, out object pairValue)
@@ -347,6 +391,18 @@ namespace EcoHousingAdvisor.EcoRuntime
                 catch { }
 
                 yield return (field.Name, value);
+            }
+        }
+
+        private static IEnumerable<Type> SafeGetTypes(Assembly assembly)
+        {
+            try
+            {
+                return assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                return ex.Types.Where(type => type != null).Cast<Type>();
             }
         }
 

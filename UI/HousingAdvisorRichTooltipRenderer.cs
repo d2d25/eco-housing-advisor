@@ -84,7 +84,7 @@ namespace Eco.Mods.TechTree
 
             return links.Count == 0
                 ? Localizer.DoStr("unknown").Color("#C0C0C0")
-                : Localizer.NotLocalizedStr(string.Join(", ", links));
+                : JoinLinks(links);
         }
 
         private static IEnumerable<LocString> OwnedLocationLinks(HousingItemAvailability availability)
@@ -148,15 +148,31 @@ namespace Eco.Mods.TechTree
                 var users = craft.Crafters
                     .Take(3)
                     .Select(UserLink)
-                    .ToArray();
-                if (users.Length == 0)
+                    .ToList();
+                if (users.Count == 0)
                 {
                     yield break;
                 }
 
                 var skill = Text.Info(craft.SkillName + " " + craft.RequiredLevel.ToString(CultureInfo.InvariantCulture));
-                yield return Localizer.Do(FormattableStringFactory.Create("{0}: {1}", skill, Localizer.NotLocalizedStr(string.Join(", ", users))));
+                yield return Localizer.Do(FormattableStringFactory.Create("{0}: {1}", skill, JoinLinks(users)));
             }
+        }
+
+        private static LocString JoinLinks(IReadOnlyList<LocString> links)
+        {
+            if (links.Count == 0)
+            {
+                return LocString.Empty;
+            }
+
+            var result = links[0];
+            for (var i = 1; i < links.Count; i++)
+            {
+                result = Localizer.Do(FormattableStringFactory.Create("{0}, {1}", result, links[i]));
+            }
+
+            return result;
         }
 
         private static LocString UserLink(string userName)
