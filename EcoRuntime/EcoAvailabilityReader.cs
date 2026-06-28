@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using Eco.Gameplay.Components;
 using Eco.Gameplay.Components.Store;
+using Eco.Gameplay.Components.Storage;
 using Eco.Gameplay.Items;
 using Eco.Gameplay.Objects;
 using Eco.Gameplay.Players;
@@ -27,16 +28,84 @@ namespace EcoHousingAdvisor.EcoRuntime
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
 
             var offers = ReadStoreOffers(user, itemTypeNames);
+            var ownedLocations = ReadOwnedLocations(user, itemTypeNames);
             var craftHints = ReadCraftHints(itemTypes);
             var result = itemTypeNames.ToDictionary(
                 name => name,
                 name => new HousingItemAvailability(
                     name,
+                    ownedLocations.TryGetValue(name, out var itemLocations) ? itemLocations : new List<HousingOwnedItemLocation>(),
                     offers.TryGetValue(name, out var itemOffers) ? itemOffers : new List<HousingStoreOffer>(),
                     craftHints.TryGetValue(name, out var itemCrafts) ? itemCrafts : new List<HousingCraftHint>()),
                 StringComparer.Ordinal);
 
             return new HousingAvailabilitySnapshot(result);
+        }
+
+        private static Dictionary<string, List<HousingOwnedItemLocation>> ReadOwnedLocations(User user, HashSet<string> itemTypeNames)
+        {
+            var locations = new Dictionary<string, List<HousingOwnedItemLocation>>(StringComparer.Ordinal);
+
+            foreach (var stack in user.Inventory.Stacks.Where(stack => stack?.Item != null && stack.Quantity > 0))
+            {
+                AddOwnedLocation(
+                    locations,
+                    itemTypeNames,
+                    stack.Item.GetType().Name,
+                    new HousingOwnedItemLocation("Your inventory", true, Convert.ToDouble(stack.Quantity, CultureInfo.InvariantCulture)));
+            }
+
+            foreach (var storage in WorldObjectUtil.AllObjsWithComponent<StorageComponent>()
+                .Where(storage => storage != null
+                    && storage.Parent != null
+                    && storage.Parent.Auth?.Owners != null
+                    && storage.Parent.Auth.Owners.ContainsUser(user)))
+            {
+                foreach (var stack in storage.Inventory.Stacks.Where(stack => stack?.Item != null && stack.Quantity > 0))
+                {
+                    AddOwnedLocation(
+                        locations,
+                        itemTypeNames,
+                        stack.Item.GetType().Name,
+                        new HousingOwnedItemLocation(ReadName(storage.Parent), false, Convert.ToDouble(stack.Quantity, CultureInfo.InvariantCulture)));
+                }
+            }
+
+            return locations;
+        }
+
+        private static void AddOwnedLocation(
+            IDictionary<string, List<HousingOwnedItemLocation>> locations,
+            ISet<string> itemTypeNames,
+            string itemTypeName,
+            HousingOwnedItemLocation location)
+        {
+            if (!itemTypeNames.Contains(itemTypeName))
+            {
+                return;
+            }
+
+            if (!locations.TryGetValue(itemTypeName, out var itemLocations))
+            {
+                itemLocations = new List<HousingOwnedItemLocation>();
+                locations.Add(itemTypeName, itemLocations);
+            }
+
+            var existing = itemLocations.FirstOrDefault(entry =>
+                entry.PlayerInventory == location.PlayerInventory
+                && string.Equals(entry.LocationName, location.LocationName, StringComparison.Ordinal));
+            if (existing == null)
+            {
+                itemLocations.Add(location);
+            }
+            else
+            {
+                itemLocations.Remove(existing);
+                itemLocations.Add(new HousingOwnedItemLocation(
+                    existing.LocationName,
+                    existing.PlayerInventory,
+                    existing.Quantity + location.Quantity));
+            }
         }
 
         private static Dictionary<string, List<HousingStoreOffer>> ReadStoreOffers(User user, HashSet<string> itemTypeNames)

@@ -26,25 +26,54 @@ namespace EcoHousingAdvisor.Domain
             string itemTypeName,
             IReadOnlyList<HousingStoreOffer> storeOffers,
             IReadOnlyList<HousingCraftHint> craftHints)
+            : this(itemTypeName, new HousingOwnedItemLocation[0], storeOffers, craftHints)
+        {
+        }
+
+        public HousingItemAvailability(
+            string itemTypeName,
+            IReadOnlyList<HousingOwnedItemLocation> ownedLocations,
+            IReadOnlyList<HousingStoreOffer> storeOffers,
+            IReadOnlyList<HousingCraftHint> craftHints)
         {
             this.ItemTypeName = itemTypeName;
+            this.OwnedLocations = ownedLocations;
             this.StoreOffers = storeOffers;
             this.CraftHints = craftHints;
         }
 
         public string ItemTypeName { get; }
 
+        public IReadOnlyList<HousingOwnedItemLocation> OwnedLocations { get; }
+
         public IReadOnlyList<HousingStoreOffer> StoreOffers { get; }
 
         public IReadOnlyList<HousingCraftHint> CraftHints { get; }
 
-        public bool IsAvailable => this.StoreOffers.Count > 0
+        public bool IsAvailable => this.OwnedLocations.Count > 0
+            || this.StoreOffers.Count > 0
             || this.CraftHints.Any(craft => craft.CraftableByAnyone || craft.Crafters.Count > 0);
 
         public static HousingItemAvailability Empty(string itemTypeName)
         {
             return new HousingItemAvailability(itemTypeName, new HousingStoreOffer[0], new HousingCraftHint[0]);
         }
+    }
+
+    public sealed class HousingOwnedItemLocation
+    {
+        public HousingOwnedItemLocation(string locationName, bool playerInventory, double quantity)
+        {
+            this.LocationName = locationName;
+            this.PlayerInventory = playerInventory;
+            this.Quantity = quantity;
+        }
+
+        public string LocationName { get; }
+
+        public bool PlayerInventory { get; }
+
+        public double Quantity { get; }
     }
 
     public sealed class HousingStoreOffer

@@ -380,6 +380,16 @@ namespace EcoHousingAdvisor.Presentation
 
         private static string FormatAvailability(HousingItemAvailability availability)
         {
+            if (availability.OwnedLocations.Count > 0)
+            {
+                var location = availability.OwnedLocations[0];
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Have: {0} in {1}",
+                    HousingFurnitureFormatter.FormatBaseValue(location.Quantity),
+                    location.LocationName);
+            }
+
             if (availability.StoreOffers.Count > 0)
             {
                 var offer = availability.StoreOffers[0];
@@ -415,6 +425,16 @@ namespace EcoHousingAdvisor.Presentation
 
         private static string FormatAvailabilityShort(HousingItemAvailability availability)
         {
+            if (availability.OwnedLocations.Count > 0)
+            {
+                var location = availability.OwnedLocations[0];
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Have: {0} in {1}",
+                    HousingFurnitureFormatter.FormatBaseValue(location.Quantity),
+                    location.LocationName);
+            }
+
             if (availability.StoreOffers.Count > 0)
             {
                 var offer = availability.StoreOffers[0];

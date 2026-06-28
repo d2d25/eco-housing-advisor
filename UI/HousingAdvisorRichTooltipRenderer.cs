@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Eco.Gameplay.Components.Store;
+using Eco.Gameplay.Components.Storage;
 using Eco.Gameplay.Items;
 using Eco.Gameplay.Objects;
 using Eco.Gameplay.Players;
@@ -70,7 +71,12 @@ namespace Eco.Mods.TechTree
 
         private static LocString AvailabilityLinks(HousingItemAvailability availability)
         {
-            var links = StoreLinks(availability).ToList();
+            var links = OwnedLocationLinks(availability).ToList();
+            if (links.Count == 0)
+            {
+                links.AddRange(StoreLinks(availability));
+            }
+
             if (links.Count == 0)
             {
                 links.AddRange(CrafterLinks(availability));
@@ -79,6 +85,32 @@ namespace Eco.Mods.TechTree
             return links.Count == 0
                 ? Localizer.DoStr("unknown").Color("#C0C0C0")
                 : Localizer.NotLocalizedStr(string.Join(", ", links));
+        }
+
+        private static IEnumerable<LocString> OwnedLocationLinks(HousingItemAvailability availability)
+        {
+            if (availability.OwnedLocations.Count == 0)
+            {
+                yield break;
+            }
+
+            var itemType = FindType(availability.ItemTypeName);
+            foreach (var location in availability.OwnedLocations.Take(2))
+            {
+                var quantity = Text.Info("x" + HousingFurnitureFormatter.FormatBaseValue(location.Quantity));
+                if (location.PlayerInventory)
+                {
+                    yield return Localizer.Do(FormattableStringFactory.Create("{0} ({1})", Localizer.DoStr("Your inventory"), quantity));
+                    continue;
+                }
+
+                var storage = FindStorage(itemType, location);
+                var locationLink = storage?.Parent != null
+                    ? storage.Parent.UILink()
+                    : Localizer.NotLocalizedStr(location.LocationName).Color("#00A7FF");
+
+                yield return Localizer.Do(FormattableStringFactory.Create("{0} ({1})", locationLink, quantity));
+            }
         }
 
         private static IEnumerable<LocString> StoreLinks(HousingItemAvailability availability)
@@ -155,6 +187,22 @@ namespace Eco.Mods.TechTree
                     && sell.Stack.Item.GetType() == itemType
                     && sell.Stack.Quantity > 0
                     && Math.Abs(Convert.ToDouble(sell.Price, CultureInfo.InvariantCulture) - offer.Price) < 0.001));
+        }
+
+        private static StorageComponent FindStorage(Type itemType, HousingOwnedItemLocation location)
+        {
+            if (itemType == null || location.PlayerInventory)
+            {
+                return null;
+            }
+
+            return WorldObjectUtil.AllObjsWithComponent<StorageComponent>()
+                .Where(storage => storage != null && storage.Parent != null)
+                .Where(storage => string.Equals(ReadName(storage.Parent), location.LocationName, StringComparison.Ordinal))
+                .FirstOrDefault(storage => storage.Inventory.Stacks.Any(stack =>
+                    stack?.Item != null
+                    && stack.Item.GetType() == itemType
+                    && stack.Quantity > 0));
         }
 
         private static Type FindType(string typeName)
