@@ -5,6 +5,7 @@ using Eco.Gameplay.Systems.Messaging.Chat.Commands;
 using EcoHousingAdvisor.Domain;
 using EcoHousingAdvisor.EcoRuntime;
 using EcoHousingAdvisor.Presentation;
+using System;
 using System.Globalization;
 
 namespace EcoHousingAdvisor.Commands
@@ -78,6 +79,33 @@ namespace EcoHousingAdvisor.Commands
         public static void Residence(User user)
         {
             Send(user, new AdvisorTextRenderer().RenderResidence(HousingAdvisorRuntime.GetResidence(user)));
+        }
+
+        [ChatSubCommand("HousingAdvisor", "Show starter whole-property room setup advice.", "hastarter")]
+        public static void HaStarter(User user)
+        {
+            var furniture = HousingAdvisorRuntime.GetSnapshot(false);
+            var availability = HousingAdvisorRuntime.GetAvailability(user, furniture);
+            var property = new HousingPropertyValueSnapshot(
+                "StarterProperty",
+                0,
+                1,
+                1,
+                new HousingPropertyRoomValue[0],
+                new string[0],
+                DateTimeOffset.UtcNow);
+            Send(user, new AdvisorTextRenderer().RenderPropertyValue(property, furniture.Groups, availability));
+        }
+
+        [ChatSubCommand("HousingAdvisor", "Refresh Eco Housing Advisor property panel text.", "hapanel")]
+        public static void HaPanel(User user)
+        {
+#if ECO_MODKIT
+            var count = PropertyValuePanelInjector.ApplyAll();
+            Send(user, "Eco Housing Advisor panel refreshed for " + count.ToString(CultureInfo.InvariantCulture) + " residence property values.");
+#else
+            Send(user, "Eco Housing Advisor panel refresh is only available inside Eco runtime.");
+#endif
         }
 
         [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor help.", "hahelp")]

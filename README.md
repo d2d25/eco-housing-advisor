@@ -697,3 +697,16 @@ V0.8.3 changes property advice from "only improve existing rooms" to "reason abo
 Runtime API uncertainty confirmed:
 
 - New-room setup gains are estimates because Eco only computes exact room/category caps after a real room exists on the property.
+
+## V0.8.4 Notes
+
+V0.8.4 fixes the residency panel integration:
+
+- The in-game `Residency Property Value` view is not a normal `NewTooltip`; it renders Eco's synchronized `PropertyValue.Summary`.
+- The mod now listens to `Deed.PropertyValueChangedEvent` and injects the advisor block into the residency `Summary` after Eco recalculates it.
+- `/housingadvisor hapanel` forces a refresh of all residence property panels for testing.
+- `/housingadvisor hastarter` prints the same starter whole-property setup advice in chat, independent from the panel UI.
+
+Runtime API uncertainty confirmed:
+
+- The injected panel text is appended to `Summary` with a marker and removed/replaced on the next injection to avoid duplicates. If Eco exposes a dedicated custom panel section later, that should replace the summary injection.
