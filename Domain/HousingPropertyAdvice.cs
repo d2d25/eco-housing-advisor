@@ -55,11 +55,19 @@ namespace EcoHousingAdvisor.Domain
     public sealed class HousingPropertyAdvice
     {
         public HousingPropertyAdvice(IReadOnlyList<HousingRoomAdvice> rooms)
+            : this(rooms, new HousingRoomAdvice[0])
+        {
+        }
+
+        public HousingPropertyAdvice(IReadOnlyList<HousingRoomAdvice> rooms, IReadOnlyList<HousingRoomAdvice> newRooms)
         {
             this.Rooms = rooms;
+            this.NewRooms = newRooms;
         }
 
         public IReadOnlyList<HousingRoomAdvice> Rooms { get; }
+
+        public IReadOnlyList<HousingRoomAdvice> NewRooms { get; }
     }
 
     public sealed class HousingPropertyAdviceEngine
@@ -86,7 +94,54 @@ namespace EcoHousingAdvisor.Domain
                 .Where(advice => advice.Additions.Count > 0)
                 .ToArray();
 
-            return new HousingPropertyAdvice(roomAdvice);
+            var newRoomAdvice = BuildNewRoomSetups(property, indexedGroups, availability, maxRooms, maxAdditionsPerRoom);
+
+            return new HousingPropertyAdvice(roomAdvice, newRoomAdvice);
+        }
+
+        private static IReadOnlyList<HousingRoomAdvice> BuildNewRoomSetups(
+            HousingPropertyValueSnapshot property,
+            IReadOnlyDictionary<string, HousingFurnitureGroup[]> indexedGroups,
+            HousingAvailabilitySnapshot availability,
+            int maxRooms,
+            int maxAdditionsPerRoom)
+        {
+            var limit = maxRooms < 1 ? 2 : maxRooms;
+            var existingRooms = new HashSet<string>(
+                property.Rooms
+                    .Select(room => HousingRoomRules.NormalizeRoomName(room.Category ?? room.RoomName))
+                    .Where(room => !string.IsNullOrWhiteSpace(room)),
+                StringComparer.OrdinalIgnoreCase);
+
+            return HousingRoomRules.StarterRoomPriority()
+                .Where(roomCategory => !existingRooms.Contains(roomCategory))
+                .Select(roomCategory => new HousingPropertyRoomValue("New " + roomCategory, roomCategory, 0, null))
+                .Select(room => new HousingRoomAdvice(room, BuildRoomSetupAdditions(property, room, indexedGroups, availability, maxAdditionsPerRoom)))
+                .Where(advice => advice.Additions.Count > 0)
+                .Take(limit)
+                .ToArray();
+        }
+
+        private static IReadOnlyList<HousingRoomAdditionAdvice> BuildRoomSetupAdditions(
+            HousingPropertyValueSnapshot property,
+            HousingPropertyRoomValue room,
+            IReadOnlyDictionary<string, HousingFurnitureGroup[]> indexedGroups,
+            HousingAvailabilitySnapshot availability,
+            int maxAdditions)
+        {
+            var limit = maxAdditions < 1 ? 3 : maxAdditions;
+            if (!indexedGroups.TryGetValue(room.Category, out var matches))
+            {
+                return Array.Empty<HousingRoomAdditionAdvice>();
+            }
+
+            return matches
+                .Select(match => BuildAdditionAdvice(property, room, room.Category, match, availability.ForItem(match.Items[0].ItemTypeName)))
+                .Where(advice => advice != null && advice.EstimatedGain > 0 && advice.Availability.IsAvailable)
+                .OrderByDescending(advice => advice.EstimatedGain)
+                .ThenBy(advice => advice.Group.Items[0].DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Take(limit)
+                .ToArray();
         }
 
         private static IReadOnlyList<HousingRoomAdditionAdvice> BuildAdditions(

@@ -27,6 +27,8 @@ public static class HousingAdvisorDomainTests
         RendersPropertyValueTooltipSummary();
         FindsUsefulCategoriesForFrenchRoomNames();
         SuggestsPropertyAdditionsForWeakRooms();
+        SuggestsStarterBedroomWhenPropertyHasNoRooms();
+        SuggestsMissingBathroomWhenBedroomExists();
         AppliesDuplicatePenaltyFromMappedRoomTypes();
         ReadsFakeRoomFurnitureTypeLimits();
         HidesUnavailablePropertyAdvice();
@@ -407,6 +409,66 @@ public static class HousingAdvisorDomainTests
         var cappedAdvice = new HousingPropertyAdviceEngine().BuildAdvice(cappedProperty, groups, allAvailable, 1, 1);
         AssertEqual(3.25, cappedAdvice.Rooms[0].Additions[0].EstimatedGain, "diminished gain");
         AssertEqual("past soft cap", cappedAdvice.Rooms[0].Additions[0].CapNote, "diminished cap note");
+    }
+
+    private static void SuggestsStarterBedroomWhenPropertyHasNoRooms()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            0,
+            1,
+            1,
+            [],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Stump Bed", "Bedroom", 1, "Bed", 0.5),
+            Item("Unavailable Latrine", "Bathroom", 1, "Toilet", 0.5),
+        ]);
+        var availability = new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>
+        {
+            ["StumpBedItem"] = new HousingItemAvailability(
+                "StumpBedItem",
+                [],
+                [new HousingCraftHint("No skill", 0, [], true)]),
+        });
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, availability, 2, 2);
+        AssertEqual(1, advice.NewRooms.Count, "starter room count");
+        AssertEqual("Bedroom", advice.NewRooms[0].Room.Category, "starter room category");
+        AssertContains("Stump Bed", advice.NewRooms[0].Additions[0].Group.Items[0].DisplayName);
+
+        var output = new AdvisorTextRenderer().RenderPropertyValue(property, groups, availability);
+        AssertContains("No residence rooms found yet.", output);
+        AssertContains("New useful room setups:", output);
+        AssertContains("Bedroom:", output);
+        AssertContains("Stump Bed", output);
+        AssertContains("Craft: no skill required", output);
+    }
+
+    private static void SuggestsMissingBathroomWhenBedroomExists()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            1,
+            1,
+            1,
+            [new HousingPropertyRoomValue("Chambre", "Bedroom", 1, 1)],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Stump Bed", "Bedroom", 1, "Bed", 0.5),
+            Item("Latrine", "Bathroom", 2, "Toilet", 0.5),
+        ]);
+        var availability = AvailabilityFor(groups);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, availability, 2, 2);
+
+        AssertEqual(1, advice.NewRooms.Count, "missing bathroom room count");
+        AssertEqual("Bathroom", advice.NewRooms[0].Room.Category, "missing room category");
+        AssertContains("Latrine", advice.NewRooms[0].Additions[0].Group.Items[0].DisplayName);
     }
 
     private static void AppliesDuplicatePenaltyFromMappedRoomTypes()

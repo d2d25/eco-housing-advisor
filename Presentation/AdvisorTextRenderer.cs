@@ -143,6 +143,11 @@ namespace EcoHousingAdvisor.Presentation
             HousingPropertyAdvice advice = null)
         {
             var lines = new List<string>();
+            if (advice == null && groups != null && groups.Count > 0)
+            {
+                advice = new HousingPropertyAdviceEngine().BuildAdvice(snapshot, groups, availability ?? new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>()), 2, 3);
+            }
+
             if (snapshot.Rooms.Count > 0)
             {
                 lines.Add(string.Format(
@@ -164,13 +169,9 @@ namespace EcoHousingAdvisor.Presentation
                     }
                 }
 
-                if (advice == null && groups != null && groups.Count > 0)
-                {
-                    advice = new HousingPropertyAdviceEngine().BuildAdvice(snapshot, groups, availability ?? new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>()), 2, 3);
-                }
-
                 if (advice != null)
                 {
+                    AddNewRoomAdvice(lines, advice);
                     foreach (var roomAdvice in advice.Rooms)
                     {
                         lines.Add(string.Format(
@@ -197,7 +198,15 @@ namespace EcoHousingAdvisor.Presentation
             }
             else
             {
-                lines.Add("Advisor is attached to PropertyValue, but room details need one more runtime mapping pass.");
+                lines.Add("No residence rooms found yet.");
+                if (advice != null && advice.NewRooms.Count > 0)
+                {
+                    AddNewRoomAdvice(lines, advice);
+                }
+                else
+                {
+                    lines.Add("Advisor is attached to PropertyValue, but no available room setup was found yet.");
+                }
             }
 
             if (snapshot.TotalValue != null)
@@ -214,6 +223,31 @@ namespace EcoHousingAdvisor.Presentation
                 ? "XP values are est.; final property multiplier was not fully mapped."
                 : "XP values are est.; utility requirements are not checked yet.");
             return string.Join(Environment.NewLine, lines);
+        }
+
+        private static void AddNewRoomAdvice(ICollection<string> lines, HousingPropertyAdvice advice)
+        {
+            if (advice.NewRooms.Count == 0)
+            {
+                return;
+            }
+
+            lines.Add("New useful room setups:");
+            foreach (var roomAdvice in advice.NewRooms)
+            {
+                lines.Add(roomAdvice.Room.Category + ":");
+                foreach (var addition in roomAdvice.Additions)
+                {
+                    var firstItem = addition.Group.Items[0];
+                    lines.Add(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "- {0}: +{1} XP/day est. ({2})",
+                        firstItem.DisplayName,
+                        HousingFurnitureFormatter.FormatBaseValue(addition.EstimatedGain),
+                        addition.CapNote));
+                    lines.Add("  " + FormatAvailability(addition.Availability));
+                }
+            }
         }
 
         public string RenderSuggestions(HousingSuggestionResult result)

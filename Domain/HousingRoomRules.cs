@@ -176,6 +176,11 @@ namespace EcoHousingAdvisor.Domain
                 .ToArray();
         }
 
+        public static IReadOnlyList<string> StarterRoomPriority()
+        {
+            return new[] { "Bedroom", "Bathroom", "Kitchen", "Living Room" };
+        }
+
         public static string NormalizeRoomName(string roomName)
         {
             if (string.IsNullOrWhiteSpace(roomName))

@@ -685,3 +685,15 @@ V0.8.1 fixes the first pre-V1 server feedback:
 Runtime API uncertainty confirmed:
 
 - The hidden/unobtainable filter is based on Eco runtime metadata instead of item-name exceptions. If Eco exposes a better official "visible in browser / obtainable" API later, replace the reflection checks with that API.
+
+## V0.8.3 Notes
+
+V0.8.3 changes property advice from "only improve existing rooms" to "reason about the whole residence":
+
+- If Eco reports no rooms on the property, the residency tooltip can now show starter room setups, starting with available `Bedroom` items such as `Stump Bed`.
+- If a property already has one room type, the advisor can still suggest missing useful room setups such as `Bathroom`, `Kitchen`, or `Living Room`.
+- Missing-room setup advice still respects the availability rule: no shop and no valid craft path means the item is hidden.
+
+Runtime API uncertainty confirmed:
+
+- New-room setup gains are estimates because Eco only computes exact room/category caps after a real room exists on the property.
