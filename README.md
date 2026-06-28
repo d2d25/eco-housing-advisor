@@ -710,3 +710,12 @@ V0.8.4 fixes the residency panel integration:
 Runtime API uncertainty confirmed:
 
 - The injected panel text is appended to `Summary` with a marker and removed/replaced on the next injection to avoid duplicates. If Eco exposes a dedicated custom panel section later, that should replace the summary injection.
+
+## V0.8.9 Notes
+
+V0.8.9 cleans up the tooltip probe pass:
+
+- The mod now compiles `UI/` in the server build, matching the OpenNutriView tooltip pattern.
+- Temporary `HA-*` food, stomach, deed, property, and item probe markers were removed.
+- Clean tooltips remain for housing items, deeds, and `ResidencyPropertyValue`.
+- The panel refresh path remains available through `/housingadvisor hapanel` while the preferred UI path is the Eco `NewTooltip` system.

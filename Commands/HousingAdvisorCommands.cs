@@ -72,7 +72,7 @@ namespace EcoHousingAdvisor.Commands
         [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor UI status.", "uistatus")]
         public static void UiStatus(User user)
         {
-            Send(user, "Eco Housing Advisor UI: furniture item tooltip probe is installed. Hover housing items to test.");
+            Send(user, "Eco Housing Advisor UI: housing item, deed, and residency property value tooltips are installed.");
         }
 
         [ChatSubCommand("HousingAdvisor", "Probe your residence rooms, tiers, and caps.", "haresidence")]
