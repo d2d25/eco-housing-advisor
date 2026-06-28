@@ -1,6 +1,5 @@
 using Eco.Core.Plugins.Interfaces;
 using Eco.Core.Utils;
-using Eco.Gameplay.Property;
 using Eco.Shared.Localization;
 
 namespace Eco.Mods.TechTree
@@ -24,8 +23,6 @@ namespace Eco.Mods.TechTree
 
         public void Initialize(TimedTask timer)
         {
-            Deed.PropertyValueChangedEvent.Add(deed => EcoHousingAdvisor.EcoRuntime.PropertyValuePanelInjector.Apply(deed));
-            EcoHousingAdvisor.EcoRuntime.PropertyValuePanelInjector.ApplyAll();
         }
     }
 }

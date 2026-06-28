@@ -97,13 +97,6 @@ namespace EcoHousingAdvisor.Commands
             Send(user, new AdvisorTextRenderer().RenderPropertyValue(property, furniture.Groups, availability));
         }
 
-        [ChatSubCommand("HousingAdvisor", "Refresh Eco Housing Advisor property panel text.", "hapanel")]
-        public static void HaPanel(User user)
-        {
-            var count = PropertyValuePanelInjector.ApplyAll();
-            Send(user, "Eco Housing Advisor panel refreshed for " + count.ToString(CultureInfo.InvariantCulture) + " residence property values.");
-        }
-
         [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor help.", "hahelp")]
         public static void HaHelp(User user)
         {

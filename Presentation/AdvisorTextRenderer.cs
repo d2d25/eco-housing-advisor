@@ -225,6 +225,51 @@ namespace EcoHousingAdvisor.Presentation
             return string.Join(Environment.NewLine, lines);
         }
 
+        public string RenderPropertyTooltip(
+            HousingPropertyValueSnapshot snapshot,
+            IReadOnlyList<HousingFurnitureGroup> groups,
+            HousingAvailabilitySnapshot availability,
+            HousingPropertyAdvice advice = null)
+        {
+            if (advice == null)
+            {
+                advice = new HousingPropertyAdviceEngine().BuildAdvice(
+                    snapshot,
+                    groups ?? new HousingFurnitureGroup[0],
+                    availability ?? new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>()),
+                    2,
+                    2);
+            }
+
+            var lines = new List<string>();
+            var additions = advice.NewRooms
+                .SelectMany(room => room.Additions.Select(addition => new { Room = room.Room.Category, Addition = addition }))
+                .Concat(advice.Rooms.SelectMany(room => room.Additions.Select(addition => new { Room = room.Room.RoomName, Addition = addition })))
+                .OrderByDescending(entry => entry.Addition.EstimatedGain)
+                .Take(3)
+                .ToArray();
+
+            if (additions.Length == 0)
+            {
+                return "No useful available housing upgrade found.";
+            }
+
+            lines.Add("Best housing moves:");
+            foreach (var entry in additions)
+            {
+                var item = entry.Addition.Group.Items[0];
+                lines.Add(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "- {0}: {1} +{2} XP/day est.",
+                    entry.Room,
+                    item.DisplayName,
+                    HousingFurnitureFormatter.FormatBaseValue(entry.Addition.EstimatedGain)));
+                lines.Add("  " + FormatAvailabilityShort(entry.Addition.Availability));
+            }
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
         private static void AddNewRoomAdvice(ICollection<string> lines, HousingPropertyAdvice advice)
         {
             if (advice.NewRooms.Count == 0)
@@ -366,6 +411,40 @@ namespace EcoHousingAdvisor.Presentation
             }
 
             return "Availability: not found in accessible shops; craft recipe unknown.";
+        }
+
+        private static string FormatAvailabilityShort(HousingItemAvailability availability)
+        {
+            if (availability.StoreOffers.Count > 0)
+            {
+                var offer = availability.StoreOffers[0];
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Buy: {0} {1} at {2}, stock {3}",
+                    HousingFurnitureFormatter.FormatBaseValue(offer.Price),
+                    offer.Currency,
+                    offer.StoreName,
+                    HousingFurnitureFormatter.FormatBaseValue(offer.Quantity));
+            }
+
+            if (availability.CraftHints.Count > 0)
+            {
+                var craft = availability.CraftHints[0];
+                if (craft.CraftableByAnyone)
+                {
+                    return "Craft: no skill required";
+                }
+
+                var crafters = craft.Crafters.Count == 0 ? "no known crafter" : string.Join(", ", craft.Crafters);
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Craft: {0} {1}; {2}",
+                    craft.SkillName,
+                    craft.RequiredLevel,
+                    crafters);
+            }
+
+            return "Availability unknown";
         }
 
         private static string FormatDuplicateNote(HousingRoomAdditionAdvice addition)

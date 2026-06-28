@@ -23,7 +23,6 @@
     <Compile Remove="EcoRuntime\HousingAdvisorPlugin.cs" />
     <Compile Remove="EcoRuntime\EcoResidenceReader.cs" />
     <Compile Remove="EcoRuntime\HousingAdvisorRuntime.cs" />
-    <Compile Remove="EcoRuntime\PropertyValuePanelInjector.cs" />
   </ItemGroup>
 
   <ItemGroup>

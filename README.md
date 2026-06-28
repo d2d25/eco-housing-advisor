@@ -700,16 +700,11 @@ Runtime API uncertainty confirmed:
 
 ## V0.8.4 Notes
 
-V0.8.4 fixes the residency panel integration:
+V0.8.4 tested residency panel integration:
 
-- The in-game `Residency Property Value` view is not a normal `NewTooltip`; it renders Eco's synchronized `PropertyValue.Summary`.
-- The mod now listens to `Deed.PropertyValueChangedEvent` and injects the advisor block into the residency `Summary` after Eco recalculates it.
-- `/housingadvisor hapanel` forces a refresh of all residence property panels for testing.
-- `/housingadvisor hastarter` prints the same starter whole-property setup advice in chat, independent from the panel UI.
-
-Runtime API uncertainty confirmed:
-
-- The injected panel text is appended to `Summary` with a marker and removed/replaced on the next injection to avoid duplicates. If Eco exposes a dedicated custom panel section later, that should replace the summary injection.
+- Directly appending advisor text into Eco's synchronized `PropertyValue` fields was possible but caused duplicated, noisy UI in real tooltips.
+- The preferred UI path is now the same `NewTooltip` style used by OpenNutriView.
+- `/housingadvisor hastarter` prints starter whole-property setup advice in chat, independent from the tooltip UI.
 
 ## V0.8.9 Notes
 
@@ -717,5 +712,5 @@ V0.8.9 cleans up the tooltip probe pass:
 
 - The mod now compiles `UI/` in the server build, matching the OpenNutriView tooltip pattern.
 - Temporary `HA-*` food, stomach, deed, property, and item probe markers were removed.
-- Clean tooltips remain for housing items, deeds, and `ResidencyPropertyValue`.
-- The panel refresh path remains available through `/housingadvisor hapanel` while the preferred UI path is the Eco `NewTooltip` system.
+- Clean tooltips remain for housing items and `ResidencyPropertyValue`.
+- The residency tooltip now uses a compact "best housing moves" summary instead of the verbose debug-style property report.
