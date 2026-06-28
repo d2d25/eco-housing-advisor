@@ -317,6 +317,11 @@ namespace EcoHousingAdvisor.Presentation
             if (availability.CraftHints.Count > 0)
             {
                 var craft = availability.CraftHints[0];
+                if (craft.CraftableByAnyone)
+                {
+                    return "Craft: no skill required";
+                }
+
                 var crafters = craft.Crafters.Count == 0 ? "no known crafter found" : string.Join(", ", craft.Crafters);
                 return string.Format(
                     CultureInfo.InvariantCulture,

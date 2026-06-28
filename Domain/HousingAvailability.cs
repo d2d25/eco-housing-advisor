@@ -39,7 +39,7 @@ namespace EcoHousingAdvisor.Domain
         public IReadOnlyList<HousingCraftHint> CraftHints { get; }
 
         public bool IsAvailable => this.StoreOffers.Count > 0
-            || this.CraftHints.Any(craft => craft.Crafters.Count > 0);
+            || this.CraftHints.Any(craft => craft.CraftableByAnyone || craft.Crafters.Count > 0);
 
         public static HousingItemAvailability Empty(string itemTypeName)
         {
@@ -72,10 +72,16 @@ namespace EcoHousingAdvisor.Domain
     public sealed class HousingCraftHint
     {
         public HousingCraftHint(string skillName, int requiredLevel, IReadOnlyList<string> crafters)
+            : this(skillName, requiredLevel, crafters, false)
+        {
+        }
+
+        public HousingCraftHint(string skillName, int requiredLevel, IReadOnlyList<string> crafters, bool craftableByAnyone)
         {
             this.SkillName = skillName;
             this.RequiredLevel = requiredLevel;
             this.Crafters = crafters;
+            this.CraftableByAnyone = craftableByAnyone;
         }
 
         public string SkillName { get; }
@@ -83,5 +89,7 @@ namespace EcoHousingAdvisor.Domain
         public int RequiredLevel { get; }
 
         public IReadOnlyList<string> Crafters { get; }
+
+        public bool CraftableByAnyone { get; }
     }
 }

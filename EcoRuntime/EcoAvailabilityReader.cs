@@ -102,7 +102,7 @@ namespace EcoHousingAdvisor.EcoRuntime
 
                     if (hints.Length == 0)
                     {
-                        hints = new[] { new HousingCraftHint("No skill", 0, new string[0]) };
+                        hints = new[] { new HousingCraftHint("No skill", 0, new string[0], true) };
                     }
 
                     if (!result.TryGetValue(entry.Key, out var itemHints))

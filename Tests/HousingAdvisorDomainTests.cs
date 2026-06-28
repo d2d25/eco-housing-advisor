@@ -21,6 +21,7 @@ public static class HousingAdvisorDomainTests
         RendersResidenceProbeWithTierCaps();
         SuggestsStoreOffersForCategory();
         SuggestsCraftHintsWhenNoStoreOfferExists();
+        SuggestsNoSkillCraftsWithoutKnownCrafter();
         HidesUnavailableSuggestions();
         ReadsFakePropertyValueRooms();
         RendersPropertyValueTooltipSummary();
@@ -256,6 +257,27 @@ public static class HousingAdvisorDomainTests
 
         AssertContains("Hewn Chair", output);
         AssertContains("Craft: Logging level 1; crafters: Ada, Ben", output);
+    }
+
+    private static void SuggestsNoSkillCraftsWithoutKnownCrafter()
+    {
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Stump Bed", "Bedroom", 1, "Bed", 0.5),
+        ]);
+        var availability = new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>
+        {
+            ["StumpBedItem"] = new HousingItemAvailability(
+                "StumpBedItem",
+                [],
+                [new HousingCraftHint("No skill", 0, [], true)]),
+        });
+
+        var result = new HousingSuggestionEngine().SuggestByCategory(groups, availability, "Bedroom", 1, 5);
+        var output = new AdvisorTextRenderer().RenderSuggestions(result);
+
+        AssertContains("Stump Bed", output);
+        AssertContains("Craft: no skill required", output);
     }
 
     private static void HidesUnavailableSuggestions()
