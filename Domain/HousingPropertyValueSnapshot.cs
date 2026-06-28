@@ -5,11 +5,12 @@ namespace EcoHousingAdvisor.Domain
 {
     public sealed class HousingPropertyRoomValue
     {
-        public HousingPropertyRoomValue(string roomName, string category, double? value)
+        public HousingPropertyRoomValue(string roomName, string category, double? value, double? tier = null)
         {
             this.RoomName = roomName;
             this.Category = category;
             this.Value = value;
+            this.Tier = tier;
         }
 
         public string RoomName { get; }
@@ -17,6 +18,8 @@ namespace EcoHousingAdvisor.Domain
         public string Category { get; }
 
         public double? Value { get; }
+
+        public double? Tier { get; }
     }
 
     public sealed class HousingPropertyValueSnapshot

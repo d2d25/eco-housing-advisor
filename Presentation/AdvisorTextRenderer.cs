@@ -153,9 +153,10 @@ namespace EcoHousingAdvisor.Presentation
                 {
                     lines.Add(string.Format(
                         CultureInfo.InvariantCulture,
-                        "- {0}: {1} XP/day",
+                        "- {0}: {1} XP/day, tier {2}",
                         room.RoomName,
-                        FormatNullable(room.Value)));
+                        FormatNullable(room.Value),
+                        FormatNullable(room.Tier)));
                 }
 
                 if (groups != null && groups.Count > 0)
@@ -167,21 +168,22 @@ namespace EcoHousingAdvisor.Presentation
                         foreach (var addition in roomAdvice.Additions)
                         {
                             var firstItem = addition.Group.Items[0];
-                        lines.Add(string.Format(
-                            CultureInfo.InvariantCulture,
-                            "- {0} in {1}: +{2} base XP/day ({3})",
-                            firstItem.DisplayName,
-                            roomAdvice.Room.RoomName,
-                            HousingFurnitureFormatter.FormatBaseValue(addition.EstimatedGain),
-                            addition.Category));
+                            lines.Add(string.Format(
+                                CultureInfo.InvariantCulture,
+                                "- {0} in {1}: +{2} XP/day est. ({3}, {4})",
+                                firstItem.DisplayName,
+                                roomAdvice.Room.RoomName,
+                                HousingFurnitureFormatter.FormatBaseValue(addition.EstimatedGain),
+                                addition.Category,
+                                addition.CapNote));
                             var itemAvailability = availability?.ForItem(firstItem.ItemTypeName);
                             if (itemAvailability != null)
                             {
                                 lines.Add("  " + FormatAvailability(itemAvailability));
                             }
+                        }
                     }
                 }
-            }
             }
             else
             {
@@ -193,7 +195,7 @@ namespace EcoHousingAdvisor.Presentation
                 lines.Add("Total read: " + HousingFurnitureFormatter.FormatBaseValue(snapshot.TotalValue.Value) + " XP/day");
             }
 
-            lines.Add("Estimates ignore current duplicates/caps until the next mapping pass.");
+            lines.Add("Estimates ignore current duplicates and support-category caps until the next mapping pass.");
             return string.Join(Environment.NewLine, lines);
         }
 

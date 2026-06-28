@@ -276,14 +276,14 @@ public static class HousingAdvisorDomainTests
         var snapshot = new HousingPropertyValueSnapshot(
             "FakePropertyValue",
             21.2,
-            [new HousingPropertyRoomValue("Bedroom", "Bedroom", 8.4)],
+            [new HousingPropertyRoomValue("Bedroom", "Bedroom", 8.4, 2)],
             [],
             DateTimeOffset.UtcNow);
 
         var output = new AdvisorTextRenderer().RenderPropertyValue(snapshot);
 
         AssertContains("Advisor sees 1 residence rooms from PropertyValue.", output);
-        AssertContains("- Bedroom: 8.4 XP/day", output);
+        AssertContains("- Bedroom: 8.4 XP/day, tier 2", output);
         AssertContains("Total read: 21.2 XP/day", output);
     }
 
@@ -305,8 +305,8 @@ public static class HousingAdvisorDomainTests
             "FakePropertyValue",
             30,
             [
-                new HousingPropertyRoomValue("Salon", "Salon", 6.3),
-                new HousingPropertyRoomValue("Cuisine", "Cuisine", 11.5),
+                new HousingPropertyRoomValue("Salon", "Salon", 6.3, 2),
+                new HousingPropertyRoomValue("Cuisine", "Cuisine", 11.5, 2),
             ],
             [],
             DateTimeOffset.UtcNow);
@@ -322,10 +322,13 @@ public static class HousingAdvisorDomainTests
         AssertEqual(1, advice.Rooms.Count, "advice room count");
         AssertEqual("Salon", advice.Rooms[0].Room.RoomName, "weakest room");
         AssertContains("Big Painting", advice.Rooms[0].Additions[0].Group.Items[0].DisplayName);
+        AssertEqual(3.7, advice.Rooms[0].Additions[0].EstimatedGain, "soft cap bounded gain");
+        AssertEqual("before soft cap", advice.Rooms[0].Additions[0].CapNote, "soft cap note");
 
         var output = new AdvisorTextRenderer().RenderPropertyValue(property, groups);
         AssertContains("Buy/craft for Salon:", output);
         AssertContains("Big Painting in Salon", output);
+        AssertContains("before soft cap", output);
 
         var availability = new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>
         {
@@ -336,6 +339,16 @@ public static class HousingAdvisorDomainTests
         });
         var outputWithAvailability = new AdvisorTextRenderer().RenderPropertyValue(property, groups, availability);
         AssertContains("Buy: 42 Credits at Decor Shop", outputWithAvailability);
+
+        var cappedProperty = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            30,
+            [new HousingPropertyRoomValue("Salon", "Salon", 12, 2)],
+            [],
+            DateTimeOffset.UtcNow);
+        var cappedAdvice = new HousingPropertyAdviceEngine().BuildAdvice(cappedProperty, groups, 1, 1);
+        AssertEqual(3.25, cappedAdvice.Rooms[0].Additions[0].EstimatedGain, "diminished gain");
+        AssertEqual("past soft cap", cappedAdvice.Rooms[0].Additions[0].CapNote, "diminished cap note");
     }
 
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)

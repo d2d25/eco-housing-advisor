@@ -134,6 +134,11 @@ namespace EcoHousingAdvisor.EcoRuntime
                 ?? TryReadDouble(roomSource, "TotalValue")
                 ?? TryReadDouble(roomSource, "HousingValue")
                 ?? TryReadDirectDouble(roomSource);
+            var tier = TryReadDouble(roomSource, "Tier")
+                ?? TryReadDouble(roomSource, "MaterialTier")
+                ?? TryReadDouble(roomSource, "RoomTier")
+                ?? TryReadDouble(roomSource, "AverageTier")
+                ?? TryReadDouble(roomSource, "AvgTier");
 
             if (string.IsNullOrWhiteSpace(roomName) && string.IsNullOrWhiteSpace(category) && valueNumber == null)
             {
@@ -143,7 +148,8 @@ namespace EcoHousingAdvisor.EcoRuntime
             return new HousingPropertyRoomValue(
                 string.IsNullOrWhiteSpace(roomName) ? category ?? "Room" : roomName,
                 string.IsNullOrWhiteSpace(category) ? roomName ?? "Unknown" : category,
-                valueNumber);
+                valueNumber,
+                tier);
         }
 
         private static bool UnwrapKeyValuePair(object value, out object key, out object pairValue)
