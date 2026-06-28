@@ -1,4 +1,3 @@
-#if ECO_MODKIT
 using System;
 using System.Linq;
 using Eco.Gameplay.Property;
@@ -56,7 +55,7 @@ namespace Eco.Mods.TechTree
             }
             catch (Exception exception)
             {
-                Log.WriteError(Localizer.Do("[EcoHousingAdvisor] Failed to generate FoodItem probe tooltip."));
+                Log.WriteError(Localizer.DoStr("[EcoHousingAdvisor] Failed to generate FoodItem probe tooltip."));
                 Log.WriteException(exception);
                 return LocString.Empty;
             }
@@ -73,7 +72,7 @@ namespace Eco.Mods.TechTree
             }
             catch (Exception exception)
             {
-                Log.WriteError(Localizer.Do("[EcoHousingAdvisor] Failed to generate Stomach probe tooltip."));
+                Log.WriteError(Localizer.DoStr("[EcoHousingAdvisor] Failed to generate Stomach probe tooltip."));
                 Log.WriteException(exception);
                 return LocString.Empty;
             }
@@ -112,11 +111,10 @@ namespace Eco.Mods.TechTree
             }
             catch (Exception exception)
             {
-                Log.WriteError(Localizer.Do("[EcoHousingAdvisor] Failed to generate PropertyValue tooltip."));
+                Log.WriteError(Localizer.DoStr("[EcoHousingAdvisor] Failed to generate PropertyValue tooltip."));
                 Log.WriteException(exception);
                 return LocString.Empty;
             }
         }
     }
 }
-#endif

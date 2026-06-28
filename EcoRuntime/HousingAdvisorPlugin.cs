@@ -1,4 +1,3 @@
-#if ECO_MODKIT
 using Eco.Core.Plugins.Interfaces;
 using Eco.Core.Utils;
 using Eco.Gameplay.Property;
@@ -30,4 +29,3 @@ namespace Eco.Mods.TechTree
         }
     }
 }
-#endif

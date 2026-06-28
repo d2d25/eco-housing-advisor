@@ -100,12 +100,8 @@ namespace EcoHousingAdvisor.Commands
         [ChatSubCommand("HousingAdvisor", "Refresh Eco Housing Advisor property panel text.", "hapanel")]
         public static void HaPanel(User user)
         {
-#if ECO_MODKIT
             var count = PropertyValuePanelInjector.ApplyAll();
             Send(user, "Eco Housing Advisor panel refreshed for " + count.ToString(CultureInfo.InvariantCulture) + " residence property values.");
-#else
-            Send(user, "Eco Housing Advisor panel refresh is only available inside Eco runtime.");
-#endif
         }
 
         [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor help.", "hahelp")]

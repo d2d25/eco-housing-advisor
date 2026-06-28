@@ -1,4 +1,3 @@
-#if ECO_MODKIT
 using System;
 using Eco.Gameplay.Housing.PropertyValues;
 using Eco.Gameplay.Property;
@@ -53,7 +52,7 @@ namespace EcoHousingAdvisor.EcoRuntime
             }
             catch (Exception exception)
             {
-                Log.WriteError(Localizer.Do("[EcoHousingAdvisor] Failed to inject property value panel advice."));
+                Log.WriteError(Localizer.DoStr("[EcoHousingAdvisor] Failed to inject property value panel advice."));
                 Log.WriteException(exception);
                 return false;
             }
@@ -73,8 +72,7 @@ namespace EcoHousingAdvisor.EcoRuntime
         private static LocString AppendAdvisorBlock(string currentText, string advisorText)
         {
             var cleaned = RemoveExistingAdvisorBlock(currentText).TrimEnd();
-            return Localizer.NotLocalized(cleaned + Environment.NewLine + Environment.NewLine + Marker + Environment.NewLine + advisorText);
+            return Localizer.NotLocalizedStr(cleaned + Environment.NewLine + Environment.NewLine + Marker + Environment.NewLine + advisorText);
         }
     }
 }
-#endif
