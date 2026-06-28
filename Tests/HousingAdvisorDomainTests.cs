@@ -21,6 +21,7 @@ public static class HousingAdvisorDomainTests
         RendersResidenceProbeWithTierCaps();
         SuggestsStoreOffersForCategory();
         SuggestsCraftHintsWhenNoStoreOfferExists();
+        HidesUnavailableSuggestions();
         ReadsFakePropertyValueRooms();
         RendersPropertyValueTooltipSummary();
         FindsUsefulCategoriesForFrenchRoomNames();
@@ -255,6 +256,28 @@ public static class HousingAdvisorDomainTests
 
         AssertContains("Hewn Chair", output);
         AssertContains("Craft: Logging level 1; crafters: Ada, Ben", output);
+    }
+
+    private static void HidesUnavailableSuggestions()
+    {
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Ecko Statue", "Decoration", 5, "Statue", 0.5),
+            Item("Buyable Painting", "Decoration", 3, "Painting", 0.5),
+        ]);
+        var availability = new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>
+        {
+            ["BuyablePaintingItem"] = new HousingItemAvailability(
+                "BuyablePaintingItem",
+                [new HousingStoreOffer("Decor Shop", "Ada", 10, "Credits", 1)],
+                []),
+        });
+
+        var result = new HousingSuggestionEngine().SuggestByCategory(groups, availability, "Decoration", 1, 5);
+        var output = new AdvisorTextRenderer().RenderSuggestions(result);
+
+        AssertContains("Buyable Painting", output);
+        AssertNotContains("Ecko Statue", output);
     }
 
     private static void ReadsFakePropertyValueRooms()
@@ -578,6 +601,14 @@ public static class HousingAdvisorDomainTests
         if (!actual.Contains(expected, StringComparison.Ordinal))
         {
             throw new InvalidOperationException($"Expected output to contain '{expected}'. Actual output: {actual}");
+        }
+    }
+
+    private static void AssertNotContains(string unexpected, string actual)
+    {
+        if (actual.Contains(unexpected, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"Expected output to not contain '{unexpected}'. Actual output: {actual}");
         }
     }
 }

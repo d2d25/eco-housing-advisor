@@ -59,10 +59,11 @@ namespace EcoHousingAdvisor.Domain
             var normalizedPageSize = pageSize < 1 ? 5 : pageSize;
             var matches = groups
                 .Where(group => Contains(group.Category, category))
-                .OrderByDescending(group => group.BaseValue)
-                .ThenBy(group => group.TypeForRoomLimit, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(group => group.Items[0].DisplayName, StringComparer.OrdinalIgnoreCase)
                 .Select(group => new HousingSuggestion(group, availability.ForItem(group.Items[0].ItemTypeName)))
+                .Where(suggestion => suggestion.Availability.IsAvailable)
+                .OrderByDescending(suggestion => suggestion.Group.BaseValue)
+                .ThenBy(suggestion => suggestion.Group.TypeForRoomLimit, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(suggestion => suggestion.Group.Items[0].DisplayName, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
             var pageCount = Math.Max(1, (int)Math.Ceiling(matches.Length / (double)normalizedPageSize));

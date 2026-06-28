@@ -673,3 +673,15 @@ Runtime API uncertainty confirmed:
 
 - Eco's exact property calculation depends on real `Room`, `RoomStats`, `WorldObject`, `HousingComponent`, and `Deed` instances. A no-side-effect fake residence is not currently safe.
 - Utility requirements are still not checked in V0.8, so unavailable-power/water/chimney constraints may still need a later blocker pass.
+
+## V0.8.1 Notes
+
+V0.8.1 fixes the first pre-V1 server feedback:
+
+- Commands with a trailing page now work for string arguments, for example `/housingadvisor search chair 2`, `/housingadvisor category Seating 2`, and `/housingadvisor suggest Bathroom 2`.
+- Hidden/dev/unobtainable item types are filtered from furniture discovery when Eco exposes `Hidden`, `Category("Hidden")`, `Tag("NotInBrowser")`, `NoIcon`, or `CanItemExistInInventories() == false`.
+- `/housingadvisor suggest ...` now suppresses items with no valid store offer and no known crafter, matching the tooltip availability rule.
+
+Runtime API uncertainty confirmed:
+
+- The hidden/unobtainable filter is based on Eco runtime metadata instead of item-name exceptions. If Eco exposes a better official "visible in browser / obtainable" API later, replace the reflection checks with that API.

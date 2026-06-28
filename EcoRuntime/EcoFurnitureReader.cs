@@ -29,6 +29,7 @@ namespace EcoHousingAdvisor.EcoRuntime
 
             var itemTypes = allTypes
                 .Where(IsWorldObjectItemType)
+                .Where(IsPlayerVisibleItemType)
                 .Distinct()
                 .ToArray();
 
@@ -110,6 +111,57 @@ namespace EcoHousingAdvisor.EcoRuntime
             return false;
         }
 
+        private static bool IsPlayerVisibleItemType(Type type)
+        {
+            if (IsHiddenByAttribute(type))
+            {
+                return false;
+            }
+
+            var hidden = ReadBool(ReadInstanceMember(type, "Hidden"))
+                ?? ReadBool(ReadStaticMember(type, "Hidden"));
+            if (hidden == true)
+            {
+                return false;
+            }
+
+            var canExist = ReadBool(InvokeInstanceMember(type, "CanItemExistInInventories"));
+            if (canExist == false)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsHiddenByAttribute(Type type)
+        {
+            foreach (var attribute in type.GetCustomAttributesData())
+            {
+                var name = attribute.AttributeType.Name;
+                if (name == "NoIconAttribute")
+                {
+                    return true;
+                }
+
+                if (name == "CategoryAttribute"
+                    && attribute.ConstructorArguments.Count > 0
+                    && string.Equals(attribute.ConstructorArguments[0].Value?.ToString(), "Hidden", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (name == "TagAttribute"
+                    && attribute.ConstructorArguments.Count > 0
+                    && string.Equals(attribute.ConstructorArguments[0].Value?.ToString(), "NotInBrowser", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private static object TryReadHomeValue(Type itemType)
         {
             return ReadStaticMember(itemType, "homeValue")
@@ -138,6 +190,20 @@ namespace EcoHousingAdvisor.EcoRuntime
 
             var instance = constructor.Invoke(null);
             return ReadMember(instance, memberName);
+        }
+
+        private static object InvokeInstanceMember(Type type, string memberName)
+        {
+            var constructor = type.GetConstructor(Type.EmptyTypes);
+            if (constructor == null)
+            {
+                return null;
+            }
+
+            var instance = constructor.Invoke(null);
+            const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+            var method = type.GetMethod(memberName, Flags);
+            return method == null || method.GetParameters().Length != 0 ? null : method.Invoke(instance, null);
         }
 
         private static object ReadMember(object instance, string memberName)
@@ -177,6 +243,11 @@ namespace EcoHousingAdvisor.EcoRuntime
             {
                 return null;
             }
+        }
+
+        private static bool? ReadBool(object value)
+        {
+            return value is bool b ? b : (bool?)null;
         }
 
         private static string TryReadString(object instance, string memberName)

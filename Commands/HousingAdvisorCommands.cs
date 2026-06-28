@@ -5,6 +5,7 @@ using Eco.Gameplay.Systems.Messaging.Chat.Commands;
 using EcoHousingAdvisor.Domain;
 using EcoHousingAdvisor.EcoRuntime;
 using EcoHousingAdvisor.Presentation;
+using System.Globalization;
 
 namespace EcoHousingAdvisor.Commands
 {
@@ -28,18 +29,21 @@ namespace EcoHousingAdvisor.Commands
         [ChatSubCommand("HousingAdvisor", "List one housing furniture category.", "category")]
         public static void Category(User user, string name, int page = 1)
         {
+            page = ExtractTrailingPage(ref name, page);
             SendQuery(user, new HousingFurnitureQuery("category", name, page, PageSize), false);
         }
 
         [ChatSubCommand("HousingAdvisor", "Search housing furniture by name, category, or type limit.", "search")]
         public static void Search(User user, string text, int page = 1)
         {
+            page = ExtractTrailingPage(ref text, page);
             SendQuery(user, new HousingFurnitureQuery("search", text, page, PageSize), false);
         }
 
         [ChatSubCommand("HousingAdvisor", "Suggest housing additions to buy or craft for one category.", "suggest")]
         public static void Suggest(User user, string category, int page = 1)
         {
+            page = ExtractTrailingPage(ref category, page);
             var snapshot = HousingAdvisorRuntime.GetSnapshot(false);
             var availability = HousingAdvisorRuntime.GetAvailability(user, snapshot);
             var result = new HousingSuggestionEngine().SuggestByCategory(
@@ -92,6 +96,32 @@ namespace EcoHousingAdvisor.Commands
         private static void Send(User user, string text)
         {
             ChatManager.SendMessage(user, ChannelManager.Obj.Get(SpecialChannel.General), text);
+        }
+
+        private static int ExtractTrailingPage(ref string text, int page)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return page < 1 ? 1 : page;
+            }
+
+            var trimmed = text.Trim();
+            var lastSpace = trimmed.LastIndexOf(' ');
+            if (lastSpace <= 0)
+            {
+                text = trimmed;
+                return page < 1 ? 1 : page;
+            }
+
+            var lastToken = trimmed.Substring(lastSpace + 1);
+            if (!int.TryParse(lastToken, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedPage))
+            {
+                text = trimmed;
+                return page < 1 ? 1 : page;
+            }
+
+            text = trimmed.Substring(0, lastSpace).Trim();
+            return parsedPage < 1 ? 1 : parsedPage;
         }
     }
 }
