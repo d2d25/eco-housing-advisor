@@ -1,6 +1,7 @@
 #if ECO_MODKIT
 using System;
 using System.Linq;
+using Eco.Gameplay.Property;
 using Eco.Gameplay.Items;
 using Eco.Gameplay.Housing.PropertyValues;
 using Eco.Gameplay.Players;
@@ -45,15 +46,32 @@ namespace Eco.Mods.TechTree
         [NewTooltip(CacheAs.Disabled, overrideType: typeof(PropertyValue))]
         public static LocString HousingAdvisorPropertyValueTooltip(this PropertyValue propertyValue, User user)
         {
+            return BuildPropertyValueTooltip(propertyValue, user);
+        }
+
+        [NewTooltip(CacheAs.Disabled, overrideType: typeof(ResidencyPropertyValue))]
+        public static LocString HousingAdvisorResidencyPropertyValueTooltip(this ResidencyPropertyValue propertyValue, User user)
+        {
+            return BuildPropertyValueTooltip(propertyValue, user);
+        }
+
+        [NewTooltip(CacheAs.Disabled, overrideType: typeof(Deed))]
+        public static LocString HousingAdvisorDeedTooltip(this Deed deed, User user)
+        {
+            return deed?.PropertyValue is ResidencyPropertyValue propertyValue
+                ? BuildPropertyValueTooltip(propertyValue, user)
+                : LocString.Empty;
+        }
+
+        private static LocString BuildPropertyValueTooltip(PropertyValue propertyValue, User user)
+        {
             try
             {
                 var snapshot = new EcoPropertyValueReader().Read(propertyValue);
                 var furniture = HousingAdvisorRuntime.GetSnapshot(false);
                 var availability = HousingAdvisorRuntime.GetAvailability(user, furniture);
                 var advice = HousingAdvisorRuntime.GetPropertyAdvice(propertyValue, snapshot, furniture, availability);
-                return new TooltipSection(
-                    Localizer.DoStr("Eco Housing Advisor"),
-                    Localizer.NotLocalized(new AdvisorTextRenderer().RenderPropertyValue(snapshot, furniture.Groups, availability, advice)));
+                return Localizer.NotLocalized(new AdvisorTextRenderer().RenderPropertyValue(snapshot, furniture.Groups, availability, advice));
             }
             catch (Exception exception)
             {
