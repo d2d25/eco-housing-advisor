@@ -89,9 +89,64 @@ namespace EcoHousingAdvisor.Presentation
                 "/housingadvisor hadebug - cache/discovery debug",
                 "/housingadvisor harefresh - rebuild furniture cache",
                 "/housingadvisor haresidence - probe residence rooms, tiers, and caps",
+                "/housingadvisor hadiag Bed - diagnose current room furniture type detection",
                 "/housingadvisor uistatus - show UI probe status",
                 "/housingadvisor hahelp - show this help",
             });
+        }
+
+        public string RenderRoomDiagnostics(HousingRoomDiagnostics diagnostics, string typeFilter)
+        {
+            var lines = new List<string>
+            {
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Eco Housing Advisor room diagnostic: {0}, category {1}, value {2}, tier {3}. Objects: {4}.",
+                    diagnostics.RoomName,
+                    diagnostics.RoomType,
+                    FormatNullable(diagnostics.RoomValue),
+                    FormatNullable(diagnostics.Tier),
+                    diagnostics.Objects.Count),
+            };
+
+            lines.Add(diagnostics.TypeCounts.Count == 0
+                ? "Detected type limits: none"
+                : "Detected type limits: " + string.Join(", ", diagnostics.TypeCounts.OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase).Select(entry => entry.Key + " x" + entry.Value)));
+
+            var objects = diagnostics.Objects
+                .Where(item => string.IsNullOrWhiteSpace(typeFilter)
+                    || (item.TypeForRoomLimit ?? string.Empty).IndexOf(typeFilter, StringComparison.OrdinalIgnoreCase) >= 0
+                    || (item.DisplayName ?? string.Empty).IndexOf(typeFilter, StringComparison.OrdinalIgnoreCase) >= 0
+                    || (item.ObjectType ?? string.Empty).IndexOf(typeFilter, StringComparison.OrdinalIgnoreCase) >= 0)
+                .Take(12)
+                .ToArray();
+
+            if (objects.Length == 0)
+            {
+                lines.Add(string.IsNullOrWhiteSpace(typeFilter)
+                    ? "No readable contained objects."
+                    : "No contained objects matched '" + typeFilter + "'.");
+            }
+
+            foreach (var item in objects)
+            {
+                lines.Add(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "- {0}: type {1}, category {2}, base {3}, duplicate multiplier {4}, housing component {5}",
+                    item.DisplayName,
+                    string.IsNullOrWhiteSpace(item.TypeForRoomLimit) ? "?" : item.TypeForRoomLimit,
+                    string.IsNullOrWhiteSpace(item.Category) ? "?" : item.Category,
+                    FormatNullable(item.BaseValue),
+                    FormatNullable(item.DuplicateMultiplier),
+                    item.HasHousingComponent ? "yes" : "no"));
+            }
+
+            foreach (var warning in diagnostics.Warnings)
+            {
+                lines.Add("Warning: " + warning);
+            }
+
+            return string.Join(Environment.NewLine, lines);
         }
 
         public string RenderResidence(HousingResidenceSnapshot snapshot)

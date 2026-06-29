@@ -81,6 +81,12 @@ namespace EcoHousingAdvisor.Commands
             Send(user, new AdvisorTextRenderer().RenderResidence(HousingAdvisorRuntime.GetResidence(user)));
         }
 
+        [ChatSubCommand("HousingAdvisor", "Diagnose current room furniture detection.", "hadiag")]
+        public static void HaDiag(User user, string typeFilter = null)
+        {
+            Send(user, new AdvisorTextRenderer().RenderRoomDiagnostics(HousingAdvisorRuntime.GetCurrentRoomDiagnostics(user), typeFilter));
+        }
+
         [ChatSubCommand("HousingAdvisor", "Show starter whole-property room setup advice.", "hastarter")]
         public static void HaStarter(User user)
         {

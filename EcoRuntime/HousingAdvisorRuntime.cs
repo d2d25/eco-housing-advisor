@@ -12,6 +12,7 @@ namespace EcoHousingAdvisor.EcoRuntime
             new HousingFurnitureGrouper());
         private static readonly EcoAvailabilityReader AvailabilityReader = new EcoAvailabilityReader();
         private static readonly EcoResidenceReader ResidenceReader = new EcoResidenceReader();
+        private static readonly EcoRoomDiagnosticsReader RoomDiagnosticsReader = new EcoRoomDiagnosticsReader();
         private static readonly Dictionary<string, TimedAvailability> AvailabilityCache = new Dictionary<string, TimedAvailability>(StringComparer.Ordinal);
         private static readonly Dictionary<int, TimedPropertyAdvice> PropertyAdviceCache = new Dictionary<int, TimedPropertyAdvice>();
         private static readonly TimeSpan AvailabilityTtl = TimeSpan.FromSeconds(30);
@@ -38,6 +39,11 @@ namespace EcoHousingAdvisor.EcoRuntime
         public static HousingResidenceSnapshot GetResidence(User user)
         {
             return ResidenceReader.ReadResidence(user);
+        }
+
+        public static HousingRoomDiagnostics GetCurrentRoomDiagnostics(User user)
+        {
+            return RoomDiagnosticsReader.ReadCurrentRoom(user);
         }
 
         public static HousingPropertyAdvice GetPropertyAdvice(
