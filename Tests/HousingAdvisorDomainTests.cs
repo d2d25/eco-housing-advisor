@@ -32,7 +32,7 @@ public static class HousingAdvisorDomainTests
         AppliesDuplicatePenaltyFromMappedRoomTypes();
         ReadsFakeRoomFurnitureTypeLimits();
         HidesUnavailablePropertyAdvice();
-        AppliesFinalPropertyMultiplier();
+        DoesNotApplyFinalPropertyMultiplierToDelta();
         AppliesSupportCategoryCap();
         AppliesBathroomPropertyCap();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
@@ -552,7 +552,7 @@ public static class HousingAdvisorDomainTests
         AssertEqual(0, advice.Rooms.Count, "unavailable advice hidden");
     }
 
-    private static void AppliesFinalPropertyMultiplier()
+    private static void DoesNotApplyFinalPropertyMultiplierToDelta()
     {
         var property = new HousingPropertyValueSnapshot(
             "FakePropertyValue",
@@ -569,7 +569,7 @@ public static class HousingAdvisorDomainTests
 
         var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 1, 1);
 
-        AssertEqual(8, advice.Rooms[0].Additions[0].EstimatedGain, "final multiplier gain");
+        AssertEqual(4, advice.Rooms[0].Additions[0].EstimatedGain, "final multiplier ignored for delta");
     }
 
     private static void AppliesSupportCategoryCap()

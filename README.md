@@ -666,7 +666,7 @@ V0.8 moves the residency tooltip toward a playable pre-V1 advisor:
 - The tooltip only shows suggestions that are buyable in an active store or craftable by at least one known crafter.
 - Advice is limited to the weakest two rooms and three additions per room to avoid expensive hover-time work.
 - Availability is cached per player for 30 seconds, and property advice is cached per property-value object for 10 seconds.
-- Estimated gain now accounts for duplicate furniture type penalties, support-category caps, room tier caps, bathroom/outdoor-style property category caps, and the final property multiplier when readable from the current `PropertyValue`.
+- Estimated gain now accounts for duplicate furniture type penalties, support-category caps, room tier caps, and bathroom/outdoor-style property category caps. The runtime `PropertyValue` total already reflects Eco's final property multipliers in the panel, so suggestions do not reapply the derived final multiplier.
 - The implementation intentionally does not spawn fake houses, players, or residences. Eco's real `PropertyValue` remains the source of truth, while delta scoring is computed from the already loaded runtime state.
 
 Runtime API uncertainty confirmed:

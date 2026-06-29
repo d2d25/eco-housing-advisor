@@ -176,10 +176,9 @@ namespace EcoHousingAdvisor.Domain
             var duplicateFactor = DuplicateFactor(group, existingTypeCount);
             var duplicateAdjustedBase = ApplySupportCap(room, category, group.BaseValue * duplicateFactor);
             var cap = HousingTierCaps.ForTier(room.Tier);
-            var finalMultiplier = property.FinalMultiplier ?? 1;
             if (cap == null || room.Value == null)
             {
-                return new HousingRoomAdditionAdvice(category, group, duplicateAdjustedBase * finalMultiplier, "cap unknown", existingTypeCount, duplicateFactor, availability);
+                return new HousingRoomAdditionAdvice(category, group, duplicateAdjustedBase, "cap unknown", existingTypeCount, duplicateFactor, availability);
             }
 
             var remainingSoft = cap.SoftCap - room.Value.Value;
@@ -195,7 +194,7 @@ namespace EcoHousingAdvisor.Domain
                 return new HousingRoomAdditionAdvice(
                     category,
                     group,
-                    Math.Min(duplicateAdjustedBase * cap.DiminishingReturnPercent, remainingHard) * finalMultiplier,
+                    Math.Min(duplicateAdjustedBase * cap.DiminishingReturnPercent, remainingHard),
                     "past soft cap",
                     existingTypeCount,
                     duplicateFactor,
@@ -205,7 +204,7 @@ namespace EcoHousingAdvisor.Domain
             return new HousingRoomAdditionAdvice(
                 category,
                 group,
-                Math.Min(duplicateAdjustedBase, Math.Min(remainingSoft, remainingHard)) * finalMultiplier,
+                Math.Min(duplicateAdjustedBase, Math.Min(remainingSoft, remainingHard)),
                 "before soft cap",
                 existingTypeCount,
                 duplicateFactor,

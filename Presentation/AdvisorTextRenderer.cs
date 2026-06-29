@@ -219,9 +219,7 @@ namespace EcoHousingAdvisor.Presentation
                 lines.Add("Residents: " + snapshot.ResidentCount.Value.ToString(CultureInfo.InvariantCulture));
             }
 
-            lines.Add(snapshot.FinalMultiplier == null
-                ? "XP values are est.; final property multiplier was not fully mapped."
-                : "XP values are est.; utility requirements are not checked yet.");
+            lines.Add("XP values are est.; architecture/culture multipliers are already reflected by Eco totals, not reapplied to suggestions.");
             return string.Join(Environment.NewLine, lines);
         }
 
