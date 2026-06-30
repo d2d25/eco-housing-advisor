@@ -80,18 +80,19 @@ namespace EcoHousingAdvisor.Presentation
         {
             return string.Join(Environment.NewLine, new[]
             {
-                "Eco Housing Advisor commands:",
-                "/housingadvisor suggest Seating - what to buy/craft for a category",
-                "/housingadvisor list - first summary page",
-                "/housingadvisor list 2 - summary page 2",
-                "/housingadvisor category Seating - filter one category",
-                "/housingadvisor search chair - search furniture",
-                "/housingadvisor hadebug - cache/discovery debug",
-                "/housingadvisor harefresh - rebuild furniture cache",
-                "/housingadvisor harooms - list active residence rooms",
-                "/housingadvisor haroom Bedroom - show furniture details for one room type",
-                "/housingadvisor uistatus - show UI probe status",
-                "/housingadvisor hahelp - show this help",
+                "Eco Housing Advisor admin diagnostics:",
+                "Player UX: hover housing items and Residency Property Value.",
+                "/housingadvisor suggest Seating - admin category suggestion probe",
+                "/housingadvisor list - admin furniture summary page",
+                "/housingadvisor list 2 - admin furniture summary page 2",
+                "/housingadvisor category Seating - admin category browser",
+                "/housingadvisor search chair - admin furniture search",
+                "/housingadvisor hadebug - admin cache/discovery debug",
+                "/housingadvisor harefresh - admin rebuild furniture cache",
+                "/housingadvisor harooms - admin active residence room list",
+                "/housingadvisor haroom Bedroom - admin room-type detail",
+                "/housingadvisor uistatus - admin tooltip status",
+                "/housingadvisor hahelp - show this admin help",
             });
         }
 

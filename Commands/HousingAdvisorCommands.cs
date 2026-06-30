@@ -15,33 +15,33 @@ namespace EcoHousingAdvisor.Commands
     {
         private const int PageSize = 8;
 
-        [ChatCommand("List housing furniture values discovered from the Eco runtime.")]
+        [ChatCommand("Eco Housing Advisor admin diagnostics.", ChatAuthorizationLevel.Admin)]
         public static void HousingAdvisor(User user)
         {
             SendQuery(user, new HousingFurnitureQuery("summary", null, 1, PageSize), false);
         }
 
-        [ChatSubCommand("HousingAdvisor", "List housing furniture summary.", "list")]
+        [ChatSubCommand("HousingAdvisor", "List housing furniture summary.", "list", ChatAuthorizationLevel.Admin)]
         public static void List(User user, int page = 1)
         {
             SendQuery(user, new HousingFurnitureQuery("summary", null, page < 1 ? 1 : page, PageSize), false);
         }
 
-        [ChatSubCommand("HousingAdvisor", "List one housing furniture category.", "category")]
+        [ChatSubCommand("HousingAdvisor", "List one housing furniture category.", "category", ChatAuthorizationLevel.Admin)]
         public static void Category(User user, string name, int page = 1)
         {
             page = ExtractTrailingPage(ref name, page);
             SendQuery(user, new HousingFurnitureQuery("category", name, page, PageSize), false);
         }
 
-        [ChatSubCommand("HousingAdvisor", "Search housing furniture by name, category, or type limit.", "search")]
+        [ChatSubCommand("HousingAdvisor", "Search housing furniture by name, category, or type limit.", "search", ChatAuthorizationLevel.Admin)]
         public static void Search(User user, string text, int page = 1)
         {
             page = ExtractTrailingPage(ref text, page);
             SendQuery(user, new HousingFurnitureQuery("search", text, page, PageSize), false);
         }
 
-        [ChatSubCommand("HousingAdvisor", "Suggest housing additions to buy or craft for one category.", "suggest")]
+        [ChatSubCommand("HousingAdvisor", "Suggest housing additions to buy or craft for one category.", "suggest", ChatAuthorizationLevel.Admin)]
         public static void Suggest(User user, string category, int page = 1)
         {
             page = ExtractTrailingPage(ref category, page);
@@ -56,44 +56,44 @@ namespace EcoHousingAdvisor.Commands
             Send(user, new AdvisorTextRenderer().RenderSuggestions(result));
         }
 
-        [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor discovery debug information.", "hadebug")]
+        [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor discovery debug information.", "hadebug", ChatAuthorizationLevel.Admin)]
         public static void HaDebug(User user)
         {
             var snapshot = HousingAdvisorRuntime.GetSnapshot(false);
             Send(user, new AdvisorTextRenderer().RenderDebug(snapshot));
         }
 
-        [ChatSubCommand("HousingAdvisor", "Refresh the cached housing furniture snapshot.", "harefresh")]
+        [ChatSubCommand("HousingAdvisor", "Refresh the cached housing furniture snapshot.", "harefresh", ChatAuthorizationLevel.Admin)]
         public static void HaRefresh(User user)
         {
             SendQuery(user, new HousingFurnitureQuery("summary", null, 1, PageSize), true);
         }
 
-        [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor UI status.", "uistatus")]
+        [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor UI status.", "uistatus", ChatAuthorizationLevel.Admin)]
         public static void UiStatus(User user)
         {
             Send(user, "Eco Housing Advisor UI: housing item, deed, and residency property value tooltips are installed.");
         }
 
-        [ChatSubCommand("HousingAdvisor", "Probe your residence rooms, tiers, and caps.", "haresidence")]
+        [ChatSubCommand("HousingAdvisor", "Probe your residence rooms, tiers, and caps.", "haresidence", ChatAuthorizationLevel.Admin)]
         public static void Residence(User user)
         {
             Send(user, new AdvisorTextRenderer().RenderRooms(HousingAdvisorRuntime.GetActiveResidenceProperty(user)));
         }
 
-        [ChatSubCommand("HousingAdvisor", "List rooms from your active residence.", "harooms")]
+        [ChatSubCommand("HousingAdvisor", "List rooms from your active residence.", "harooms", ChatAuthorizationLevel.Admin)]
         public static void HaRooms(User user)
         {
             Send(user, new AdvisorTextRenderer().RenderRooms(HousingAdvisorRuntime.GetActiveResidenceProperty(user)));
         }
 
-        [ChatSubCommand("HousingAdvisor", "Show furniture details for one active residence room type.", "haroom")]
+        [ChatSubCommand("HousingAdvisor", "Show furniture details for one active residence room type.", "haroom", ChatAuthorizationLevel.Admin)]
         public static void HaRoom(User user, string roomType)
         {
             Send(user, new AdvisorTextRenderer().RenderRoomDetails(HousingAdvisorRuntime.GetActiveResidenceProperty(user), roomType));
         }
 
-        [ChatSubCommand("HousingAdvisor", "Show starter whole-property room setup advice.", "hastarter")]
+        [ChatSubCommand("HousingAdvisor", "Show starter whole-property room setup advice.", "hastarter", ChatAuthorizationLevel.Admin)]
         public static void HaStarter(User user)
         {
             var furniture = HousingAdvisorRuntime.GetSnapshot(false);
@@ -109,7 +109,7 @@ namespace EcoHousingAdvisor.Commands
             Send(user, new AdvisorTextRenderer().RenderPropertyValue(property, furniture.Groups, availability));
         }
 
-        [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor help.", "hahelp")]
+        [ChatSubCommand("HousingAdvisor", "Show Eco Housing Advisor admin help.", "hahelp", ChatAuthorizationLevel.Admin)]
         public static void HaHelp(User user)
         {
             Send(user, new AdvisorTextRenderer().RenderHelp());

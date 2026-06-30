@@ -1,716 +1,139 @@
 # Eco Housing Advisor
 
-## Purpose
+Eco Housing Advisor is an Eco server mod that helps players understand which housing furniture is worth placing next.
 
-Eco Housing Advisor is a new Eco server mod project.
+The player-facing experience is intentionally tooltip-first:
 
-The goal is to build an in-game housing assistant, inspired by food advisor mods such as OpenNutriView, but for house XP and furniture. The mod should help a player answer:
+- hover a housing item to see its best possible gain on the current residence;
+- hover `Residency Property Value` to see the best useful additions for the property;
+- use Eco-native links and foldouts wherever possible, so item, shop, storage, player, and room details behave like normal Eco UI.
 
-- What should I add to this room right now?
-- Which object gives the best real housing XP after caps and duplicate penalties?
-- Which object is the best value for money on this server?
-- Which item is craftable, buyable, already owned, blocked, or not worth placing?
-- Which room in my house should I improve first?
+Chat commands are admin diagnostics only. They are kept for validation, debugging, and server support, not as the final player interface.
 
-The project should prefer Eco runtime data and Eco game code over hand-maintained JSON or duplicated rules. Static extraction can still be useful for tests and fallback data, but the primary target is a server-side mod that runs inside Eco and sees the real server state.
+## Current Features
 
-Roadmap to a playable V1: see `ROADMAP.md`.
+- Discovers housing furniture from Eco runtime data.
+- Reads `WorldObjectItem.HomeValue` for category, base value, type limit, and duplicate multiplier.
+- Reads active residence `PropertyValue` / `ResidencyPropertyValue` and its rooms when Eco exposes them.
+- Scores next useful additions with duplicate penalties, support caps, room tier soft/hard caps, and property category caps.
+- Filters recommendations to furniture that is available through at least one of:
+  - player inventory or owned storage;
+  - active store stock;
+  - craft recipe with no required skill;
+  - craft recipe with a known crafter.
+- Keeps domain scoring separate from Eco runtime/UI code.
+- Uses short TTL caches to avoid expensive hover-time scans.
 
-## Main Design Change
+## Player Usage
 
-This project replaces the previous direction of a mostly external web app reading `eco-data.json`.
+Players do not need commands.
 
-The new direction is:
+Recommended checks:
 
-1. Build an Eco server mod.
-2. Use Eco runtime APIs as the source of truth.
-3. Provide player-facing recommendations in-game first.
-4. Optionally expose a web/API layer later.
+1. Hover a housing furniture item.
+   - Expected: `Eco Housing Advisor` shows the maximum useful XP/day it can add to the current property and the best placement.
+2. Hover `Residency Property Value`.
+   - Expected: the tooltip lists a few best useful additions, where to place them, and where to find them.
+3. Hover linked objects inside the advisor text.
+   - Expected: Eco-native tooltips or foldouts open for items, shops, storage, players, and existing room details when available.
 
-The old Eco Housing app remains useful as research and as a possible future web UI, but this project should not inherit its complexity by default.
+## Admin Commands
 
-## Sources Of Inspiration
+All `/housingadvisor` commands require `ChatAuthorizationLevel.Admin`.
 
-### OpenNutriView
-
-Repository: https://github.com/BeanHeaDza/OpenNutriView
-
-Useful ideas:
-
-- In-game tooltip style UX.
-- Server-side calculation using Eco runtime objects.
-- Reading stores, stock, currencies, and accessible containers.
-- Showing best food based on real server/player state.
-- User config persisted server-side.
-
-What to reuse conceptually:
-
-- Use runtime data instead of trying to fully reproduce game state outside the game.
-- Make the recommendation directly useful to the player.
-- Include price/availability when the server economy is available.
-
-What not to copy blindly:
-
-- Housing calculations can be heavier than food tooltips, so caching/snapshots may be needed.
-- Housing recommendations need room context, placement constraints, support categories, and material tier caps.
-
-### FurnitureFinder
-
-Repository: https://github.com/BeanHeaDza/FurnitureFinder
-
-Useful ideas:
-
-- Iterate Eco world object types.
-- Detect furniture using `HousingComponent`.
-- Resolve the creating item with `WorldObjectItem.GetCreatingItemTemplateFromType(...)`.
-- Read `WorldObjectItem.HomeValue`.
-- Use `HomeValue.Category`, `HomeValue.TypeForRoomLimit`, `HomeValue.BaseValue`, and `HomeValue.DiminishingReturnMultiplier`.
-- Group equivalent furniture and variants for display.
-
-This is probably the closest reference for the housing data layer.
-
-## Product Goal
-
-The final experience should feel simple:
+These commands are diagnostic/admin tools:
 
 ```text
-Bedroom, Tier 2
-Current useful score: 14.8
-
-Best additions:
-1. Hewn Dresser x1
-   +2.4 real XP, craftable with Carpentry
-
-2. Torch Stand x1
-   +1.8 real XP, buyable for 12 credits
-
-3. Elk Statuette x2
-   +1.1 real XP, already available in storage
-
-Ignored:
-- Mortared Granite Fireplace: wrong room/support category
-- Electric Wall Lamp: requires electricity
-- Orrery: below minimum efficiency after duplicates
+/housingadvisor hahelp
+/housingadvisor list
+/housingadvisor list 2
+/housingadvisor category Seating
+/housingadvisor category Seating 2
+/housingadvisor search chair
+/housingadvisor search chair 2
+/housingadvisor suggest Bedroom
+/housingadvisor harooms
+/housingadvisor haroom Bedroom
+/housingadvisor hadebug
+/housingadvisor harefresh
+/housingadvisor uistatus
 ```
 
-The player should not need to understand every housing formula. The mod should explain only when useful:
+Notes:
 
-- why an item is recommended;
-- why an item is blocked;
-- why the real gain is lower than base XP;
-- what to buy/craft first.
+- `ha*` command names avoid collisions with Eco 0.13 built-in command keys.
+- Chat output is plain text. Rich links are reserved for Eco tooltips.
+- Commands may expose raw runtime/readability details and should not be treated as the final UX.
 
-## Expected Features
+## Installation
 
-### V0: Furniture Data Probe
+From this repository:
 
-Build the smallest useful mod:
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\install-to-eco-server.ps1
+```
 
-- Add a command such as `/housingadvisor`.
-- Discover all housing furniture from Eco runtime.
-- Read each item `HomeValue`.
-- Print or expose a categorized list:
-  - item name;
-  - room/support category;
-  - base housing value;
-  - type limit;
-  - duplicate multiplier;
-  - creating recipe or skill if available.
-
-Success condition:
-
-- The mod can list real furniture values from the running Eco server without relying on the old extractor.
-
-### V1: Room Advisor
-
-Recommend what to add to one room.
-
-Inputs:
-
-- current room, if detectable;
-- or selected room type;
-- room material tier;
-- existing objects in the room;
-- accepted requirements:
-  - electricity;
-  - mechanical power;
-  - fuel;
-  - water;
-  - chimney/pollution;
-- minimum XP efficiency;
-- optional budget/currency.
-
-Outputs:
-
-- current score if obtainable from Eco;
-- recommended objects;
-- real XP gain per object;
-- duplicate/cap/tier explanation;
-- craft/buy/owned status;
-- blocked items with reasons;
-- alternatives and equivalents.
-
-### V2: Whole House Advisor
-
-Analyze all rooms in a house/property.
-
-Outputs:
-
-- which room to improve first;
-- best global shopping/crafting list;
-- rooms that are already near cap;
-- rooms with bad value due to material tier;
-- objects that should be moved between rooms;
-- house-level score improvement estimate.
-
-### V3: Economy-Aware Optimization
-
-Use live server economy:
-
-- store listings;
-- price;
-- stock;
-- currencies;
-- seller/store name;
-- taxes if accessible;
-- player-accessible storage if possible.
-
-Optimization modes:
-
-- max XP;
-- max XP under budget;
-- best XP per credit;
-- cheapest equivalent;
-- best next object to buy.
-
-## Runtime Data To Use
-
-Prefer runtime Eco APIs and objects whenever possible.
-
-Important data sources to investigate:
-
-- `ServiceHolder.Obj.AllTypes`
-- `HousingComponent`
-- `WorldObjectItem.GetCreatingItemTemplateFromType(...)`
-- `WorldObjectItem.HomeValue`
-- `CraftingComponent.RecipesForItem(...)`
-- `StoreComponent`
-- `StorageComponent`
-- player inventory/storage access APIs
-- property/residency APIs
-- room detection APIs
-- world object occupancy and room requirement components
-
-Expected `HomeValue` fields:
-
-- `Category`
-- `TypeForRoomLimit`
-- `BaseValue`
-- `DiminishingReturnMultiplier`
-
-## Housing Rules To Respect
-
-The advisor must eventually account for:
-
-- room category;
-- support category;
-- primary room value;
-- support caps;
-- duplicate item diminishing returns;
-- material tier soft cap;
-- material tier hard cap;
-- material tier diminishing return;
-- bathroom or other room ratio limits;
-- multiple rooms of the same type;
-- outdoor category behavior;
-- room volume;
-- required room material tier;
-- room containment requirement;
-- object occupancy;
-- object height;
-- surface placement;
-- objects placed on tables/shelves/stands;
-- rugs or objects that do not block normal floor placement;
-- operational requirements:
-  - electricity;
-  - mechanical power;
-  - fuel;
-  - water;
-  - chimney/pollution;
-- variants;
-- equivalence groups;
-- craftability;
-- buyability;
-- player-owned items.
-
-The advisor should always present "real gain", not only base housing value.
-
-Confirmed room/support category rules are documented in `docs/housing-room-rules.md`.
-V0.6 uses those rules to translate furniture categories into useful room placement text.
-
-## Equivalence And Variants
-
-Two concepts must stay separate.
-
-### Variant
-
-A variant is the same object family with different material/color/style, usually from the same base recipe.
-
-Example:
-
-- Ashlar Basalt Fireplace
-- Ashlar Granite Fireplace
-- Ashlar Limestone Fireplace
-
-### Equivalent
-
-An equivalent is not necessarily the same object family, but it can serve the same optimization role.
-
-Objects may be equivalent if they have the same:
-
-- room/support category;
-- base value;
-- duplicate multiplier;
-- type limit;
-- placement requirements;
-- room requirements;
-- operational requirements;
-- footprint/surface/volume constraints.
-
-The advisor should recommend an equivalence group, then show currently available variants/options.
-
-Example:
+Default target:
 
 ```text
-Best seating option:
-- Hewn Bench if Carpentry is available
-- Mortared Stone Bench if Masonry is available
-- pick cheapest available option if economy is enabled
+C:\Program Files (x86)\Steam\steamapps\common\Eco Server\Mods\UserCode\EcoHousingAdvisor
 ```
 
-## Economy Rules
+Restart `EcoServer.exe` after installation.
 
-Economy recommendations must distinguish:
+## Validation Checklist
 
-- already owned;
-- in accessible storage;
-- buyable directly;
-- craftable from owned/buyable ingredients;
-- unavailable;
-- blocked by stock;
-- blocked by missing skill;
-- blocked by missing station;
-- blocked by unsupported requirement.
+Run domain tests:
 
-For budget mode, the advisor should consider:
-
-- cheapest equivalent;
-- stock-limited purchases;
-- recursive craft cost;
-- ingredient tags;
-- multiple currencies;
-- missing prices;
-- server-specific modded items.
-
-## User Interface Ideas
-
-Start simple. Avoid building a complex web UI too early.
-
-Possible surfaces:
-
-- slash command;
-- tooltip;
-- in-game tab/window if practical;
-- optional web page served by the mod later.
-
-Suggested commands:
-
-```text
-/housingadvisor
-/housingadvisor room
-/housingadvisor house
-/housingadvisor debug
+```powershell
+dotnet run --project EcoHousingAdvisor.csproj --framework net10.0 -p:EcoHousingAdvisorTests=true
 ```
 
-Suggested output levels:
+Install and restart the Eco server:
 
-- normal: only best recommendations;
-- expanded: reasons and alternatives;
-- debug: exact calculation steps and raw runtime values.
-
-## Debug And Issue Support
-
-The mod should eventually support an export/debug payload for bug reports.
-
-Useful payload:
-
-- Eco version;
-- mod version;
-- server name if allowed;
-- room category;
-- material tier;
-- current objects;
-- recommended objects;
-- item `HomeValue` data;
-- stores/prices used;
-- player config;
-- calculated result;
-- raw Eco score if available.
-
-Goal:
-
-- make it easy for testers to report a difference between the advisor and the game tooltip.
-
-## Architecture Proposal
-
-Keep the project split into clear layers.
-
-### Eco Runtime Adapter
-
-Responsible for reading Eco runtime objects:
-
-- furniture;
-- home values;
-- recipes;
-- rooms;
-- stores;
-- inventory/storage;
-- player state.
-
-This layer can depend on Eco assemblies.
-
-### Advisor Domain
-
-Pure C# logic as much as possible:
-
-- scoring;
-- recommendations;
-- ranking;
-- equivalence groups;
-- availability;
-- budget optimization.
-
-This layer should be unit-testable with fake snapshots.
-
-### Presentation Layer
-
-Responsible for:
-
-- commands;
-- tooltip output;
-- web/API output if added later.
-
-It should not contain housing formulas.
-
-## Suggested Project Layout
-
-```text
-EcoHousingAdvisor/
-  README.md
-  EcoHousingAdvisor.csproj
-  Commands/
-    HousingAdvisorCommands.cs
-  EcoRuntime/
-    EcoFurnitureReader.cs
-    EcoEconomyReader.cs
-    EcoRoomReader.cs
-  Domain/
-    HousingAdvisorEngine.cs
-    HousingScoring.cs
-    AvailabilityResolver.cs
-    EquivalenceResolver.cs
-  Presentation/
-    AdvisorTextRenderer.cs
-  Tests/
-    HousingScoringTests.cs
-    EquivalenceResolverTests.cs
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\install-to-eco-server.ps1
 ```
 
-## Testing Strategy
+After restart, check the latest Eco log for:
 
-Start with fake snapshots before full Eco integration tests.
+- no `error CS`;
+- no unexpected `Exception`;
+- no unexpected `Failed`;
+- `Web Server now listening`.
 
-Minimum tests:
+In-game smoke tests:
 
-- reads fake `HomeValue`;
-- duplicate diminishing returns;
-- support cap;
-- material tier cap;
-- equivalent items grouped correctly;
-- unavailable items rejected;
-- cheaper equivalent chosen;
-- stock-limited purchase respected;
-- blocked operational requirement explained;
-- zero-gain item ignored.
+- item tooltip shows max useful property gain, not duplicate vanilla housing data;
+- property value tooltip shows best useful additions;
+- links/foldouts open for available Eco objects where possible;
+- non-admin users cannot run `/housingadvisor`;
+- admin users can run `/housingadvisor hahelp`, `list`, `search`, `category`, `suggest`, `harooms`, `haroom`, `hadebug`, and `harefresh`.
 
-Later tests:
+## Runtime Boundaries
 
-- compare against real Eco tooltip examples;
-- compare against FurnitureFinder output for raw furniture values;
-- compare store extraction against OpenNutriView-like store reading.
+Eco Housing Advisor uses Eco runtime data as source of truth whenever possible. Some Eco APIs are not stable or not fully exposed from `Mods/UserCode`, so the mod uses defensive reflection in runtime adapters and keeps uncertainty out of the domain model.
 
-## Development Rules For Codex
+Known limits before V1:
 
-When working on this project in a fresh context:
+- Utility requirements such as electricity, water, fuel, chimney, or power are not fully validated yet.
+- Existing room links use Eco room value descriptions/foldouts when available; if Eco does not expose a specific room value, the tooltip falls back to the room category.
+- Exact future gain is still bounded by Eco's real property state after placement; the mod estimates the delta from currently readable runtime data and avoids spawning fake residences.
 
-1. Read this README first.
-2. Do not import old app complexity unless explicitly needed.
-3. Prefer small vertical slices over large rewrites.
-4. Use Eco runtime APIs as source of truth.
-5. Keep domain logic testable outside Eco.
-6. Avoid hardcoded item exceptions unless the runtime data proves there is no general rule.
-7. Keep user-facing output simple.
-8. Add tests before changing scoring behavior.
-9. Document any confirmed gap between Eco runtime data and what the game UI displays.
-10. Do not optimize the whole house until the single-room advisor is reliable.
+## Architecture
 
-## First Implementation Task
+- `Domain/`: pure scoring/query models and tests; no Eco runtime types.
+- `EcoRuntime/`: Eco API/reflection readers, caches, availability, and runtime link targets.
+- `UI/`: Eco tooltip integration and rich `LocString` rendering.
+- `Commands/`: admin-only chat diagnostics.
+- `Presentation/`: plain-text command rendering.
+- `Tests/`: fake domain/runtime tests that run outside Eco.
 
-Recommended first prompt for a new context:
+## Credits / Inspiration
 
-```text
-Read work/eco-housing-advisor/README.md.
-Create the initial EcoHousingAdvisor mod skeleton.
-Implement V0 only:
-- command /housingadvisor;
-- discover housing furniture from Eco runtime;
-- read WorldObjectItem.HomeValue;
-- print grouped furniture by category with base value and duplicate multiplier.
-Keep the domain model separate from Eco runtime code.
-Add fake unit tests for the domain grouping logic.
-Do not build the full optimizer yet.
-```
+This mod was built with ideas inspired by:
 
-## V0 Implementation Notes
+- [OpenNutriView](https://github.com/BeanHeaDza/OpenNutriView), especially the tooltip-first player experience and live Eco runtime/store scanning approach.
+- [FurnitureFinder](https://github.com/BeanHeaDza/FurnitureFinder), especially the furniture discovery direction around `HousingComponent`, `WorldObjectItem`, and `HomeValue`.
 
-The initial skeleton is intentionally small:
-
-- `Domain/` contains pure grouping records and logic.
-- `EcoRuntime/` contains the Eco-facing furniture reader.
-- `Presentation/` renders simple command text.
-- `Commands/` contains the `/housingadvisor` chat command for Eco's `Mods/UserCode` runtime.
-- `Tests/` contains fake domain tests that can run without Eco assemblies.
-
-Runtime API uncertainty to confirm inside a real Eco server:
-
-- The command handler signature and localized chat send helper may need small adjustments for the exact Eco server version.
-- `ServiceHolder.Obj.AllTypes` is read reflectively when available, then falls back to loaded assembly types.
-- `WorldObjectItem.HomeValue` / `homeValue` is read reflectively. The reader currently accepts `BaseValue`, `Value`, or `ObjectValue`, and `DiminishingReturnMultiplier`, `DiminishingMultiplierAcrossFullProperty`, or `DiminishingReturnPercent`.
-- `HousingComponent` detection is best-effort because component metadata may be exposed by attributes, members, or runtime component collections depending on Eco version. Non-null `HomeValue` remains the decisive V0 furniture signal.
-
-## V0.2 Plan
-
-Goal: make the in-game command comfortable to test on a real server without starting the full optimizer.
-
-Scope:
-
-- Add command filters:
-  - `/housingadvisor` shows a short summary and the first page.
-  - `/housingadvisor category <name>` lists one category.
-  - `/housingadvisor search <text>` finds matching furniture names.
-  - `/housingadvisor debug` prints discovery counts and runtime warnings.
-- Add pagination or a hard output limit so the chat is not flooded.
-- Improve display names without constructing Eco item attributes after startup.
-- Cache the discovered furniture snapshot after the first command call.
-- Add a safe refresh path, probably `/housingadvisor refresh`, for server admins.
-- Add recipe/skill hints only if they can be read from Eco runtime without side effects.
-- Keep grouping logic in `Domain/` and add fake tests for filtering, pagination, and stable ordering.
-
-Acceptance tests:
-
-- Server starts with `EcoHousingAdvisor` installed and no compile/runtime errors.
-- `/housingadvisor` returns a short summary instead of a giant wall of text.
-- `/housingadvisor category Seating` returns only seating entries.
-- `/housingadvisor search chair` returns chair-like items with base value, type limit, and duplicate multiplier.
-- Running the command repeatedly does not create Eco item attributes or throw cache errors.
-- Local fake tests pass.
-
-Out of scope for V0.2:
-
-- Room-specific recommendations.
-- Real XP gain after material tier, room caps, or placed duplicates.
-- Economy/store optimization.
-
-## V0.2 Implementation Notes
-
-V0.2 adds a small browse layer over the V0 furniture snapshot:
-
-- `/housingadvisor list` shows a compact first page instead of printing every group.
-- `/housingadvisor list <number>` shows a summary page.
-- `/housingadvisor category <name>` filters by housing category through an Eco sub-command.
-- `/housingadvisor search <text>` filters by category, type limit, item class, or display name through an Eco sub-command.
-- `/housingadvisor hadebug` shows snapshot counts and cache timestamp.
-- `/housingadvisor harefresh` rebuilds the runtime furniture snapshot.
-- `/housingadvisor hahelp` prints a compact command reference.
-
-The runtime reader still avoids Eco attribute construction after server startup. It treats `WorldObjectItem.homeValue` / `HomeValue` as the source of truth and does not instantiate item display attributes. Display names are therefore currently safe class-name-based names until a side-effect-free Eco naming API is confirmed.
-
-V0.2 is still a data probe, not a room optimizer.
-
-## V0.2.1 Notes
-
-Eco 0.13 did not route multiple optional parameters on the root `/housingadvisor` command as expected. V0.2.1 changes `category` and `search` to explicit Eco `ChatSubCommand` handlers so commands like `/housingadvisor category Seating` and `/housingadvisor search chair` dispatch correctly.
-
-## V0.2.2 Notes
-
-Eco 0.13 already has a command key named `debug`, so registering `debug` as a sub-command broke server startup. V0.2.2 kept only `category` and `search` as sub-commands.
-
-## V0.2.3 Notes
-
-Eco 0.13 treats unknown words after a root command as sub-command names before calling the root handler. That means `/housingadvisor debug` and `/housingadvisor refresh` cannot be parsed by the root command. V0.2.3 exposes the safe names `/housingadvisor hadebug` and `/housingadvisor harefresh`.
-
-## V0.3 Notes
-
-V0.3 improves the data browser polish:
-
-- adds `/housingadvisor hahelp`;
-- renders class-name display names as separated words;
-- shows `Next: ...` hints instead of raw page numbers;
-- shows `End of results.` on the last page.
-
-## V0.3.1 Notes
-
-Eco displays automatic help for root commands that have sub-commands, and treats `/housingadvisor 2` as an unknown sub-command. V0.3.1 adds explicit list paging:
-
-- `/housingadvisor list`
-- `/housingadvisor list 2`
-
-## V0.4 Notes
-
-V0.4 adds the first in-game UI probe, based on OpenNutriView's tooltip-library pattern:
-
-- `/housingadvisor uistatus` confirms the UI probe is installed.
-- Housing furniture item tooltips are enriched with:
-  - category;
-  - base value;
-  - type limit;
-  - duplicate multiplier.
-- Tooltip generation uses `[TooltipLibrary]`, `[NewTooltip(CacheAs.Disabled, overrideType: typeof(Item))]`, and an extension method, matching OpenNutriView's simple `FoodItem` tooltip approach.
-- The cached furniture snapshot is now shared through `EcoRuntime/HousingAdvisorRuntime.cs`, so commands and UI do not each build their own cache.
-
-Runtime API uncertainty confirmed:
-
-- The advanced tooltip signature using `TooltipOrigin` and `CacheAs.SubType` works in Eco core tooltip libraries, but did not compile from this server's `Mods/UserCode` context. V0.4 therefore uses the simpler OpenNutriView-style tooltip signature.
-
-## V0.5 Notes
-
-V0.5 starts shifting from raw furniture data to player-useful advice:
-
-- `/housingadvisor suggest Seating` ranks useful additions for one housing category.
-- Suggestions show:
-  - estimated XP/day gain, currently the item's base housing value until room/duplicate/tier context is implemented;
-  - where the object belongs, using Eco's housing category;
-  - the type limit;
-  - the cheapest matching shop offer found in active stores;
-  - if no shop offer is found, the first craft skill hint and known citizens with that skill.
-- Store scanning is based on OpenNutriView's `WorldObjectUtil.AllObjsWithComponent<StoreComponent>()` approach.
-- Craft hints use `CraftingComponent.RecipesForItem(...)` and recipe `RequiredSkills`, following the Eco core tech tree command pattern.
-
-Runtime API uncertainty confirmed:
-
-- The `AccessType.ConsumerAccess` authorization enum used by OpenNutriView did not compile from this server's `Mods/UserCode` context. V0.5 therefore scans enabled stores first; per-player store authorization needs a confirmed namespace/type before being re-enabled.
-- Crafter detection reads `UserManager.Users` and `user.Skillset.Skills` best-effort. If Eco exposes skill levels differently on a server, suggestions will still show the required craft skill but may not list all possible crafters yet.
-- Suggested gain is explicitly an estimate. Real gain still needs room detection, current placed furniture, duplicate penalties, and material tier caps.
-
-## V0.6 Notes
-
-V0.6 documents Eco's vanilla housing room/support category rules and uses them in suggestions:
-
-- `Seating` is displayed as useful in Living Room, Bedroom, Kitchen, Bathroom, Outdoor, and Cultural instead of being treated like a room.
-- `Decoration` and `Lighting` are displayed as support for normal residence rooms.
-- Primary categories such as Bedroom, Kitchen, Bathroom, Living Room, and Outdoor point to their matching room.
-- `Industrial` is marked as negative for residence use.
-
-Runtime API uncertainty confirmed:
-
-- These rules are read from the server's vanilla `Mods/__core__/Systems/HousingValues.cs`.
-- A safe runtime API for reading all configured `RoomCategory` relationships from `Mods/UserCode` is not confirmed yet, so the domain layer contains a small documented copy for now.
-
-## V0.7 Notes
-
-V0.7 starts the residence probe:
-
-- `/housingadvisor haresidence` attempts to read the player's current room/residence context.
-- It reports room category, material tier if exposed, current value if exposed, furniture count if exposed, and the tier soft/hard caps from Eco's `HousingValues.cs`.
-- The command name uses `haresidence` because Eco 0.13 already has a command key named `residence`.
-- The first runtime reader is defensive and reflection-based. It prioritizes confirmed room data and adds notes when full residence room enumeration is not yet confirmed.
-
-Runtime API uncertainty confirmed:
-
-- Eco core exposes current room access through `user.UpdateRoom()` and `user.CurrentRoom`, as seen in `Mods/__core__/Commands/PaintingCommands.cs`.
-- Full residence/deed room enumeration still needs a confirmed stable API. V0.7 may report only the current confirmed room until that API is found.
-
-## V0.7.1 Notes
-
-V0.7.1 pivots the next room-advisor work toward Eco's own residency value source:
-
-- The mod now hooks `Eco.Gameplay.Housing.PropertyValues.PropertyValue`, the same runtime family used by the in-game "Residency Property Value" panel.
-- This is the correct direction for rentals, roommates, and residence deeds, because housing XP can apply without simple furniture/object ownership.
-- A conservative `EcoPropertyValueReader` extracts per-room values when Eco exposes them through readable members and keeps the domain snapshot separate from the Eco runtime type.
-- When per-room values are readable, the tooltip now suggests concrete buy/craft candidates for the weakest rooms, using Eco furniture data and the documented room/support category rules.
-- French room labels seen in the residency panel, such as `Salon`, `Cuisine`, `Chambre`, `Salle de bain`, and `Extérieurs`, are normalized to Eco's internal room categories for advice.
-- If Eco exposes room tier in `PropertyValue`, the advice now bounds estimated XP by the room's vanilla soft/hard cap and marks suggestions as `before soft cap`, `past soft cap`, or `hard cap reached`.
-- If Eco exposes the furniture/world objects contained in a room value, the advice maps existing `TypeForRoomLimit` counts and applies the furniture duplicate multiplier before ranking suggestions.
-
-Runtime API uncertainty confirmed:
-
-- The exact internal member names used by `PropertyValue` for per-room values still need confirmation on this Eco server version.
-- The new tooltip section will say when it is attached to `PropertyValue` but cannot yet read the room list, which gives us a clean next mapping target without guessing from ownership.
-- Existing furniture detection is best-effort because the exact room-value object graph is still runtime-mapped by reflection.
-- The suggested XP shown in the residency tooltip does not yet subtract support-category caps or unavailable utilities.
-
-## V0.8 Notes
-
-V0.8 moves the residency tooltip toward a playable pre-V1 advisor:
-
-- The tooltip only shows suggestions that are buyable in an active store or craftable by at least one known crafter.
-- Advice is limited to the weakest two rooms and three additions per room to avoid expensive hover-time work.
-- Availability is cached per player for 30 seconds, and property advice is cached per property-value object for 10 seconds.
-- Estimated gain now accounts for duplicate furniture type penalties, support-category caps, room tier caps, and bathroom/outdoor-style property category caps. The runtime `PropertyValue` total already reflects Eco's final property multipliers in the panel, so suggestions do not reapply the derived final multiplier.
-- The implementation intentionally does not spawn fake houses, players, or residences. Eco's real `PropertyValue` remains the source of truth, while delta scoring is computed from the already loaded runtime state.
-
-Runtime API uncertainty confirmed:
-
-- Eco's exact property calculation depends on real `Room`, `RoomStats`, `WorldObject`, `HousingComponent`, and `Deed` instances. A no-side-effect fake residence is not currently safe.
-- Utility requirements are still not checked in V0.8, so unavailable-power/water/chimney constraints may still need a later blocker pass.
-
-## V0.8.1 Notes
-
-V0.8.1 fixes the first pre-V1 server feedback:
-
-- Commands with a trailing page now work for string arguments, for example `/housingadvisor search chair 2`, `/housingadvisor category Seating 2`, and `/housingadvisor suggest Bathroom 2`.
-- Hidden/dev/unobtainable item types are filtered from furniture discovery when Eco exposes `Hidden`, `Category("Hidden")`, `Tag("NotInBrowser")`, `NoIcon`, or `CanItemExistInInventories() == false`.
-- `/housingadvisor suggest ...` now suppresses items with no valid store offer and no known crafter, matching the tooltip availability rule.
-
-Runtime API uncertainty confirmed:
-
-- The hidden/unobtainable filter is based on Eco runtime metadata instead of item-name exceptions. If Eco exposes a better official "visible in browser / obtainable" API later, replace the reflection checks with that API.
-
-## V0.8.3 Notes
-
-V0.8.3 changes property advice from "only improve existing rooms" to "reason about the whole residence":
-
-- If Eco reports no rooms on the property, the residency tooltip can now show starter room setups, starting with available `Bedroom` items such as `Stump Bed`.
-- If a property already has one room type, the advisor can still suggest missing useful room setups such as `Bathroom`, `Kitchen`, or `Living Room`.
-- Missing-room setup advice still respects the availability rule: no shop and no valid craft path means the item is hidden.
-
-Runtime API uncertainty confirmed:
-
-- New-room setup gains are estimates because Eco only computes exact room/category caps after a real room exists on the property.
-
-## V0.8.4 Notes
-
-V0.8.4 tested residency panel integration:
-
-- Directly appending advisor text into Eco's synchronized `PropertyValue` fields was possible but caused duplicated, noisy UI in real tooltips.
-- The preferred UI path is now the same `NewTooltip` style used by OpenNutriView.
-- `/housingadvisor hastarter` prints starter whole-property setup advice in chat, independent from the tooltip UI.
-
-## V0.8.9 Notes
-
-V0.8.9 cleans up the tooltip probe pass:
-
-- The mod now compiles `UI/` in the server build, matching the OpenNutriView tooltip pattern.
-- Temporary `HA-*` food, stomach, deed, property, and item probe markers were removed.
-- Clean tooltips remain for housing items and `ResidencyPropertyValue`.
-- The residency tooltip now uses a compact "best housing moves" summary instead of the verbose debug-style property report.
+Thanks to BeanHeaDza and those projects for showing clean Eco mod patterns. Eco Housing Advisor does not claim affiliation and does not intentionally copy their code; it adapts the concepts to housing XP.
