@@ -307,12 +307,29 @@ namespace Eco.Mods.TechTree
         private static LocString RegisteredEcoLinkOrFallback(HousingLinkTarget target, string fallback)
         {
             if (EcoLinkTargetRegistry.TryGet(target, out var instance)
-                && TryBuildEcoUiLink(instance, out var link))
+                && TryBuildRoomDetailsFoldout(target, instance, fallback, out var link))
             {
                 return link;
             }
 
             return RoomCategoryLink(target.DisplayName ?? target.TypeName ?? fallback);
+        }
+
+        private static bool TryBuildRoomDetailsFoldout(HousingLinkTarget target, object instance, string fallback, out LocString link)
+        {
+            link = LocString.Empty;
+            var description = ReadMember(instance, "Description");
+            if (description == null)
+            {
+                return TryBuildEcoUiLink(instance, out link);
+            }
+
+            var body = description is LocString locDescription
+                ? locDescription
+                : Localizer.NotLocalizedStr(description.ToString());
+            var label = RoomCategoryLink(target.DisplayName ?? target.TypeName ?? fallback);
+            link = TextLoc.Foldout(label, Localizer.DoStr("Room Details"), body);
+            return true;
         }
 
         private static bool TryBuildEcoUiLink(object instance, out LocString link)
@@ -471,6 +488,11 @@ namespace Eco.Mods.TechTree
 
         private static string ReadString(object instance, string memberName)
         {
+            return ReadMember(instance, memberName)?.ToString();
+        }
+
+        private static object ReadMember(object instance, string memberName)
+        {
             if (instance == null)
             {
                 return null;
@@ -484,11 +506,11 @@ namespace Eco.Mods.TechTree
             var property = type.GetProperty(memberName, Flags);
             if (property != null)
             {
-                return property.GetValue(instance)?.ToString();
+                return property.GetValue(instance);
             }
 
             var field = type.GetField(memberName, Flags);
-            return field?.GetValue(instance)?.ToString();
+            return field?.GetValue(instance);
         }
 
         private sealed class TooltipEntry
