@@ -38,6 +38,7 @@ public static class HousingAdvisorDomainTests
         DoesNotApplyFinalPropertyMultiplierToDelta();
         AppliesSupportCategoryCap();
         AppliesBathroomPropertyCap();
+        PreservesNativeLinkTargetsForRichTooltips();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
 
@@ -729,6 +730,72 @@ public static class HousingAdvisorDomainTests
         var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 2, 1);
 
         AssertEqual(0.3, Math.Round(advice.Rooms[0].Additions[0].EstimatedGain, 2), "bathroom cap remaining");
+    }
+
+    private static void PreservesNativeLinkTargetsForRichTooltips()
+    {
+        var room = new HousingPropertyRoomValue(
+            "Bedroom",
+            "Bedroom",
+            2.5,
+            1,
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Bed"] = 1 },
+            null,
+            [
+                new HousingPropertyRoomObjectValue(
+                    "Stump Bed",
+                    "StumpBedItem",
+                    "Bedroom",
+                    "Bed",
+                    2.5,
+                    0.4,
+                    2.5,
+                    true,
+                    new HousingLinkTarget(HousingLinkTargetKind.WorldObject, "Stump Bed", "StumpBedObject", 42)),
+            ],
+            "Stump Bed +2.5",
+            HousingLinkTarget.RoomCategory("Bedroom"));
+
+        var availability = new HousingItemAvailability(
+            "StumpBedItem",
+            [
+                new HousingOwnedItemLocation(
+                    "d2d25's Campsite",
+                    false,
+                    1,
+                    new HousingLinkTarget(HousingLinkTargetKind.Storage, "d2d25's Campsite", "StockpileObject", 5)),
+            ],
+            [
+                new HousingStoreOffer(
+                    "Bed Shop",
+                    "Ada",
+                    10,
+                    "Credits",
+                    1,
+                    new HousingLinkTarget(HousingLinkTargetKind.Store, "Bed Shop", "StoreObject", 6),
+                    new HousingLinkTarget(HousingLinkTargetKind.User, "Ada"),
+                    new HousingLinkTarget(HousingLinkTargetKind.Currency, "Credits", "CreditItem")),
+            ],
+            [
+                new HousingCraftHint(
+                    "Logging",
+                    1,
+                    ["Ada"],
+                    false,
+                    new HousingLinkTarget(HousingLinkTargetKind.Skill, "Logging", "LoggingSkill"),
+                    new HousingLinkTarget(HousingLinkTargetKind.Recipe, "Stump Bed Recipe", "StumpBedRecipe"),
+                    [new HousingLinkTarget(HousingLinkTargetKind.User, "Ada")]),
+            ]);
+
+        AssertEqual(HousingLinkTargetKind.RoomCategory, room.RoomCategoryLink.Kind, "room category link kind");
+        AssertEqual("Bedroom", room.RoomCategoryLink.TypeName, "room category link type");
+        AssertEqual(HousingLinkTargetKind.WorldObject, room.Objects[0].ObjectLink.Kind, "placed furniture link kind");
+        AssertEqual(HousingLinkTargetKind.Storage, availability.OwnedLocations[0].LocationLink.Kind, "storage link kind");
+        AssertEqual(HousingLinkTargetKind.Store, availability.StoreOffers[0].StoreLink.Kind, "store link kind");
+        AssertEqual(HousingLinkTargetKind.User, availability.StoreOffers[0].SellerLink.Kind, "seller link kind");
+        AssertEqual(HousingLinkTargetKind.Currency, availability.StoreOffers[0].CurrencyLink.Kind, "currency link kind");
+        AssertEqual(HousingLinkTargetKind.Skill, availability.CraftHints[0].SkillLink.Kind, "skill link kind");
+        AssertEqual(HousingLinkTargetKind.User, availability.CraftHints[0].CrafterLinks[0].Kind, "crafter link kind");
     }
 
     private static HousingFurnitureItem Item(string name, string category, double baseValue, string typeLimit, double? duplicateMultiplier)

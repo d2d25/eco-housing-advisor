@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using EcoHousingAdvisor.Domain;
 
 namespace EcoHousingAdvisor.EcoRuntime
@@ -185,7 +186,8 @@ namespace EcoHousingAdvisor.EcoRuntime
                 existingTypes,
                 categoryValues,
                 objects,
-                ReadDisplayString(ReadMember(roomValue, "Description")));
+                ReadDisplayString(ReadMember(roomValue, "Description")),
+                HousingLinkTarget.RoomCategory(string.IsNullOrWhiteSpace(category) ? roomName : category));
         }
 
         private static IReadOnlyDictionary<string, double> ReadCategoryValues(object roomSource)
@@ -272,7 +274,8 @@ namespace EcoHousingAdvisor.EcoRuntime
                     baseValue,
                     duplicateMultiplier,
                     contribution,
-                    true);
+                    true,
+                    ReadObjectLink(item));
             }
         }
 
@@ -404,20 +407,57 @@ namespace EcoHousingAdvisor.EcoRuntime
 
         private static string ReadObjectDisplayName(object source)
         {
-            return ReadDisplayString(source)
-                ?? ReadDisplayString(ReadMember(source, "Parent"))
-                ?? ReadDisplayString(ReadMember(source, "Item"))
+            return ReadDisplayString(ReadMember(source, "Item"))
                 ?? ReadDisplayString(ReadMember(ReadMember(source, "Stack"), "Item"))
                 ?? ReadDisplayString(ReadMember(ReadMember(source, "Parent"), "Item"))
+                ?? ReadDisplayString(source)
+                ?? ReadDisplayString(ReadMember(source, "Parent"))
+                ?? ReadDisplayString(ReadMember(source, "Object"))
                 ?? source?.GetType().Name
                 ?? "Furniture";
         }
 
         private static string ReadObjectItemTypeName(object source)
         {
-            return ReadMember(ReadMember(source, "Item"), "GetType")?.ToString()
-                ?? ReadMember(ReadMember(ReadMember(source, "Stack"), "Item"), "GetType")?.ToString()
-                ?? source?.GetType().Name;
+            var item = ReadMember(source, "Item")
+                ?? ReadMember(ReadMember(source, "Stack"), "Item")
+                ?? ReadMember(ReadMember(source, "Parent"), "Item");
+            return item?.GetType().Name ?? source?.GetType().Name;
+        }
+
+        private static HousingLinkTarget ReadObjectLink(object source)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            var parent = ReadMember(source, "Parent")
+                ?? ReadMember(source, "Object");
+            if (parent != null)
+            {
+                return new HousingLinkTarget(
+                    HousingLinkTargetKind.WorldObject,
+                    ReadObjectDisplayName(source),
+                    parent.GetType().Name,
+                    RuntimeHelpers.GetHashCode(parent));
+            }
+
+            var item = ReadMember(source, "Item")
+                ?? ReadMember(ReadMember(source, "Stack"), "Item");
+            if (item != null)
+            {
+                return new HousingLinkTarget(
+                    HousingLinkTargetKind.ItemType,
+                    ReadObjectDisplayName(source),
+                    item.GetType().Name);
+            }
+
+            return new HousingLinkTarget(
+                HousingLinkTargetKind.WorldObject,
+                ReadObjectDisplayName(source),
+                source.GetType().Name,
+                RuntimeHelpers.GetHashCode(source));
         }
 
         private static object ReadHomeValue(object source)

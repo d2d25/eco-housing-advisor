@@ -31,7 +31,7 @@ namespace Eco.Mods.TechTree
 
                 return new TooltipSection(
                     Localizer.DoStr("Eco Housing Advisor"),
-                    Localizer.NotLocalized($"{HousingFurnitureFormatter.FormatTooltip(item)}"));
+                    HousingAdvisorRichTooltipRenderer.RenderItemTooltip(item));
             }
             catch (Exception exception)
             {

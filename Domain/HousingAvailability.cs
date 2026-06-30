@@ -63,10 +63,16 @@ namespace EcoHousingAdvisor.Domain
     public sealed class HousingOwnedItemLocation
     {
         public HousingOwnedItemLocation(string locationName, bool playerInventory, double quantity)
+            : this(locationName, playerInventory, quantity, playerInventory ? HousingLinkTarget.Inventory() : null)
+        {
+        }
+
+        public HousingOwnedItemLocation(string locationName, bool playerInventory, double quantity, HousingLinkTarget locationLink)
         {
             this.LocationName = locationName;
             this.PlayerInventory = playerInventory;
             this.Quantity = quantity;
+            this.LocationLink = locationLink;
         }
 
         public string LocationName { get; }
@@ -74,17 +80,35 @@ namespace EcoHousingAdvisor.Domain
         public bool PlayerInventory { get; }
 
         public double Quantity { get; }
+
+        public HousingLinkTarget LocationLink { get; }
     }
 
     public sealed class HousingStoreOffer
     {
         public HousingStoreOffer(string storeName, string sellerName, double price, string currency, double quantity)
+            : this(storeName, sellerName, price, currency, quantity, null, null, null)
+        {
+        }
+
+        public HousingStoreOffer(
+            string storeName,
+            string sellerName,
+            double price,
+            string currency,
+            double quantity,
+            HousingLinkTarget storeLink,
+            HousingLinkTarget sellerLink,
+            HousingLinkTarget currencyLink)
         {
             this.StoreName = storeName;
             this.SellerName = sellerName;
             this.Price = price;
             this.Currency = currency;
             this.Quantity = quantity;
+            this.StoreLink = storeLink;
+            this.SellerLink = sellerLink;
+            this.CurrencyLink = currencyLink;
         }
 
         public string StoreName { get; }
@@ -96,6 +120,12 @@ namespace EcoHousingAdvisor.Domain
         public string Currency { get; }
 
         public double Quantity { get; }
+
+        public HousingLinkTarget StoreLink { get; }
+
+        public HousingLinkTarget SellerLink { get; }
+
+        public HousingLinkTarget CurrencyLink { get; }
     }
 
     public sealed class HousingCraftHint
@@ -106,11 +136,26 @@ namespace EcoHousingAdvisor.Domain
         }
 
         public HousingCraftHint(string skillName, int requiredLevel, IReadOnlyList<string> crafters, bool craftableByAnyone)
+            : this(skillName, requiredLevel, crafters, craftableByAnyone, null, null, null)
+        {
+        }
+
+        public HousingCraftHint(
+            string skillName,
+            int requiredLevel,
+            IReadOnlyList<string> crafters,
+            bool craftableByAnyone,
+            HousingLinkTarget skillLink,
+            HousingLinkTarget recipeLink,
+            IReadOnlyList<HousingLinkTarget> crafterLinks)
         {
             this.SkillName = skillName;
             this.RequiredLevel = requiredLevel;
             this.Crafters = crafters;
             this.CraftableByAnyone = craftableByAnyone;
+            this.SkillLink = skillLink;
+            this.RecipeLink = recipeLink;
+            this.CrafterLinks = crafterLinks ?? new HousingLinkTarget[0];
         }
 
         public string SkillName { get; }
@@ -120,5 +165,11 @@ namespace EcoHousingAdvisor.Domain
         public IReadOnlyList<string> Crafters { get; }
 
         public bool CraftableByAnyone { get; }
+
+        public HousingLinkTarget SkillLink { get; }
+
+        public HousingLinkTarget RecipeLink { get; }
+
+        public IReadOnlyList<HousingLinkTarget> CrafterLinks { get; }
     }
 }

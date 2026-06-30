@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Eco.Gameplay.Components;
 using Eco.Gameplay.Components.Store;
 using Eco.Gameplay.Components.Storage;
@@ -52,7 +53,11 @@ namespace EcoHousingAdvisor.EcoRuntime
                     locations,
                     itemTypeNames,
                     stack.Item.GetType().Name,
-                    new HousingOwnedItemLocation("Your inventory", true, Convert.ToDouble(stack.Quantity, CultureInfo.InvariantCulture)));
+                    new HousingOwnedItemLocation(
+                        "Your inventory",
+                        true,
+                        Convert.ToDouble(stack.Quantity, CultureInfo.InvariantCulture),
+                        HousingLinkTarget.Inventory()));
             }
 
             foreach (var storage in WorldObjectUtil.AllObjsWithComponent<StorageComponent>()
@@ -67,7 +72,11 @@ namespace EcoHousingAdvisor.EcoRuntime
                         locations,
                         itemTypeNames,
                         stack.Item.GetType().Name,
-                        new HousingOwnedItemLocation(ReadName(storage.Parent), false, Convert.ToDouble(stack.Quantity, CultureInfo.InvariantCulture)));
+                        new HousingOwnedItemLocation(
+                            ReadName(storage.Parent),
+                            false,
+                            Convert.ToDouble(stack.Quantity, CultureInfo.InvariantCulture),
+                            Link(HousingLinkTargetKind.Storage, storage.Parent)));
                 }
             }
 
@@ -104,7 +113,8 @@ namespace EcoHousingAdvisor.EcoRuntime
                 itemLocations.Add(new HousingOwnedItemLocation(
                     existing.LocationName,
                     existing.PlayerInventory,
-                    existing.Quantity + location.Quantity));
+                    existing.Quantity + location.Quantity,
+                    existing.LocationLink ?? location.LocationLink));
             }
         }
 
@@ -137,7 +147,10 @@ namespace EcoHousingAdvisor.EcoRuntime
                         ReadString(store.Parent, "NameOfCreator") ?? "unknown seller",
                         Convert.ToDouble(tradeOffer.Price, CultureInfo.InvariantCulture),
                         ReadName(store.Currency),
-                        Convert.ToDouble(tradeOffer.Stack.Quantity, CultureInfo.InvariantCulture)));
+                        Convert.ToDouble(tradeOffer.Stack.Quantity, CultureInfo.InvariantCulture),
+                        Link(HousingLinkTargetKind.Store, store.Parent),
+                        UserLink(ReadString(store.Parent, "NameOfCreator")),
+                        Link(HousingLinkTargetKind.Currency, store.Currency)));
                 }
             }
 
@@ -166,12 +179,16 @@ namespace EcoHousingAdvisor.EcoRuntime
                         .Select(skill => new HousingCraftHint(
                             SkillName(skill.SkillType),
                             skill.Level,
-                            FindCrafters(skill.SkillType, skill.Level)))
+                            FindCrafters(skill.SkillType, skill.Level),
+                            false,
+                            TypeLink(HousingLinkTargetKind.Skill, skill.SkillType, SkillName(skill.SkillType)),
+                            Link(HousingLinkTargetKind.Recipe, recipe),
+                            FindCrafterLinks(skill.SkillType, skill.Level)))
                         .ToArray();
 
                     if (hints.Length == 0)
                     {
-                        hints = new[] { new HousingCraftHint("No skill", 0, new string[0], true) };
+                        hints = new[] { new HousingCraftHint("No skill", 0, new string[0], true, null, Link(HousingLinkTargetKind.Recipe, recipe), new HousingLinkTarget[0]) };
                     }
 
                     if (!result.TryGetValue(entry.Key, out var itemHints))
@@ -194,6 +211,16 @@ namespace EcoHousingAdvisor.EcoRuntime
                 .Select(user => user.Name)
                 .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
                 .Take(5)
+                .ToArray();
+        }
+
+        private static IReadOnlyList<HousingLinkTarget> FindCrafterLinks(Type skillType, int level)
+        {
+            return UserManager.Users
+                .Where(user => HasSkillLevel(user, skillType, level))
+                .OrderBy(user => user.Name, StringComparer.OrdinalIgnoreCase)
+                .Take(5)
+                .Select(user => Link(HousingLinkTargetKind.User, user))
                 .ToArray();
         }
 
@@ -220,6 +247,41 @@ namespace EcoHousingAdvisor.EcoRuntime
             return name.EndsWith("Skill", StringComparison.Ordinal)
                 ? name.Substring(0, name.Length - "Skill".Length)
                 : name;
+        }
+
+        private static HousingLinkTarget UserLink(string userName)
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                return null;
+            }
+
+            var user = UserManager.Users.FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, userName, StringComparison.OrdinalIgnoreCase));
+            return user == null
+                ? new HousingLinkTarget(HousingLinkTargetKind.User, userName, null)
+                : Link(HousingLinkTargetKind.User, user);
+        }
+
+        private static HousingLinkTarget TypeLink(HousingLinkTargetKind kind, Type type, string displayName = null)
+        {
+            return type == null
+                ? null
+                : new HousingLinkTarget(kind, displayName ?? type.Name, type.Name);
+        }
+
+        private static HousingLinkTarget Link(HousingLinkTargetKind kind, object instance)
+        {
+            if (instance == null)
+            {
+                return null;
+            }
+
+            return new HousingLinkTarget(
+                kind,
+                ReadName(instance),
+                instance.GetType().Name,
+                RuntimeHelpers.GetHashCode(instance));
         }
 
         private static IEnumerable<Type> SafeGetTypes(Assembly assembly)

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Eco.Gameplay.Components.Store;
 using Eco.Gameplay.Components.Storage;
+using Eco.Gameplay.Housing.PropertyValues;
 using Eco.Gameplay.Items;
 using Eco.Gameplay.Objects;
 using Eco.Gameplay.Players;
@@ -20,11 +21,29 @@ namespace Eco.Mods.TechTree
 {
     public static class HousingAdvisorRichTooltipRenderer
     {
+        public static LocString RenderItemTooltip(HousingFurnitureItem item)
+        {
+            var sb = new LocStringBuilder();
+            sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
+                "Category: {0}",
+                Link(HousingLinkTarget.RoomCategory(item.Category), item.Category))));
+            sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
+                "Base value: {0}",
+                PositiveGain(item.BaseValue))));
+            sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
+                "Type limit: {0}",
+                Localizer.NotLocalizedStr(item.TypeForRoomLimit ?? "none").Color("#00A7FF"))));
+            sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
+                "Duplicate multiplier: {0}",
+                Text.Info(HousingFurnitureFormatter.FormatMultiplier(item.DiminishingReturnMultiplier)))));
+            return sb.ToLocString();
+        }
+
         public static LocString RenderPropertyTooltip(HousingPropertyAdvice advice)
         {
             var entries = advice.NewRooms
-                .SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.Category, addition)))
-                .Concat(advice.Rooms.SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.RoomName, addition))))
+                .SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.Category, room.Room.RoomCategoryLink, addition)))
+                .Concat(advice.Rooms.SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.RoomName, room.Room.RoomCategoryLink, addition))))
                 .OrderByDescending(entry => entry.Addition.EstimatedGain)
                 .Take(3)
                 .ToArray();
@@ -44,7 +63,7 @@ namespace Eco.Mods.TechTree
                 var item = entry.Addition.Group.Items[0];
                 var itemLink = ItemLink(item);
                 var gain = PositiveGain(entry.Addition.EstimatedGain);
-                var room = Text.Info(entry.Room);
+                var room = Link(entry.RoomLink, entry.Room);
                 var places = AvailabilityLinks(entry.Addition.Availability);
 
                 sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
@@ -100,14 +119,14 @@ namespace Eco.Mods.TechTree
                 var quantity = Text.Info("x" + HousingFurnitureFormatter.FormatBaseValue(location.Quantity));
                 if (location.PlayerInventory)
                 {
-                    yield return Localizer.Do(FormattableStringFactory.Create("{0} ({1})", Localizer.DoStr("Your inventory"), quantity));
+                    yield return Localizer.Do(FormattableStringFactory.Create("{0} ({1})", Link(location.LocationLink, "Your inventory"), quantity));
                     continue;
                 }
 
                 var storage = FindStorage(itemType, location);
                 var locationLink = storage?.Parent != null
                     ? storage.Parent.UILink()
-                    : Localizer.NotLocalizedStr(location.LocationName).Color("#00A7FF");
+                    : Link(location.LocationLink, location.LocationName);
 
                 yield return Localizer.Do(FormattableStringFactory.Create("{0} ({1})", locationLink, quantity));
             }
@@ -126,9 +145,12 @@ namespace Eco.Mods.TechTree
                 var store = FindStore(itemType, offer);
                 var storeLink = store?.Parent != null
                     ? store.Parent.UILink()
-                    : Localizer.NotLocalizedStr(offer.StoreName).Color("#00A7FF");
-                var price = Localizer.NotLocalizedStr(
-                    HousingFurnitureFormatter.FormatBaseValue(offer.Price) + " " + offer.Currency);
+                    : Link(offer.StoreLink, offer.StoreName);
+                var currency = Link(offer.CurrencyLink, offer.Currency);
+                var price = Localizer.Do(FormattableStringFactory.Create(
+                    "{0} {1}",
+                    Localizer.NotLocalizedStr(HousingFurnitureFormatter.FormatBaseValue(offer.Price)),
+                    currency));
                 var stock = Text.Info("stock " + HousingFurnitureFormatter.FormatBaseValue(offer.Quantity));
 
                 yield return Localizer.Do(FormattableStringFactory.Create("{0} ({1}, {2})", storeLink, price, stock));
@@ -145,16 +167,18 @@ namespace Eco.Mods.TechTree
                     continue;
                 }
 
-                var users = craft.Crafters
-                    .Take(3)
-                    .Select(UserLink)
-                    .ToList();
+                var users = craft.CrafterLinks.Count > 0
+                    ? craft.CrafterLinks.Take(3).Select(link => Link(link, link.DisplayName)).ToList()
+                    : craft.Crafters.Take(3).Select(UserLink).ToList();
                 if (users.Count == 0)
                 {
                     yield break;
                 }
 
-                var skill = Text.Info(craft.SkillName + " " + craft.RequiredLevel.ToString(CultureInfo.InvariantCulture));
+                var skill = Localizer.Do(FormattableStringFactory.Create(
+                    "{0} {1}",
+                    Link(craft.SkillLink, craft.SkillName),
+                    Localizer.NotLocalizedStr(craft.RequiredLevel.ToString(CultureInfo.InvariantCulture))));
                 yield return Localizer.Do(FormattableStringFactory.Create("{0}: {1}", skill, JoinLinks(users)));
             }
         }
@@ -187,6 +211,72 @@ namespace Eco.Mods.TechTree
             return Localizer.NotLocalizedStr(userName).Color("#00A7FF");
         }
 
+        private static LocString Link(HousingLinkTarget target, string fallback)
+        {
+            if (target == null)
+            {
+                return Localizer.NotLocalizedStr(fallback ?? "unknown").Color("#00A7FF");
+            }
+
+            switch (target.Kind)
+            {
+                case HousingLinkTargetKind.ItemType:
+                    return ItemTypeLink(target.TypeName, target.DisplayName ?? fallback);
+                case HousingLinkTargetKind.RoomCategory:
+                    return RoomCategoryLink(target.TypeName ?? target.DisplayName ?? fallback);
+                case HousingLinkTargetKind.Store:
+                case HousingLinkTargetKind.Storage:
+                case HousingLinkTargetKind.WorldObject:
+                    return WorldObjectLinkOrFallback(target, fallback);
+                case HousingLinkTargetKind.User:
+                    return UserLink(target.DisplayName ?? fallback);
+                case HousingLinkTargetKind.Inventory:
+                    return Localizer.DoStr(target.DisplayName ?? fallback ?? "Your inventory").Color("#00A7FF");
+                case HousingLinkTargetKind.Currency:
+                case HousingLinkTargetKind.Skill:
+                case HousingLinkTargetKind.Recipe:
+                    return Localizer.NotLocalizedStr(target.DisplayName ?? fallback).Color("#00A7FF");
+                default:
+                    return Localizer.NotLocalizedStr(target.DisplayName ?? fallback ?? "unknown").Color("#00A7FF");
+            }
+        }
+
+        private static LocString ItemTypeLink(string typeName, string fallback)
+        {
+            var type = FindType(typeName);
+            if (type != null && Item.Get(type) is Item ecoItem)
+            {
+                return ecoItem.UILink();
+            }
+
+            return Localizer.NotLocalizedStr(fallback ?? typeName ?? "unknown").Color("#00A7FF");
+        }
+
+        private static LocString RoomCategoryLink(string categoryName)
+        {
+            try
+            {
+                var category = HousingConfig.GetRoomCategory(categoryName);
+                if (category != null)
+                {
+                    return category.UILink();
+                }
+            }
+            catch
+            {
+            }
+
+            return Localizer.NotLocalizedStr(categoryName ?? "Room").Color("#00A7FF");
+        }
+
+        private static LocString WorldObjectLinkOrFallback(HousingLinkTarget target, string fallback)
+        {
+            var worldObject = FindWorldObject(target);
+            return worldObject != null
+                ? worldObject.UILink()
+                : Localizer.NotLocalizedStr(target.DisplayName ?? fallback ?? "unknown").Color("#00A7FF");
+        }
+
         private static StoreComponent FindStore(Type itemType, HousingStoreOffer offer)
         {
             if (itemType == null)
@@ -196,7 +286,7 @@ namespace Eco.Mods.TechTree
 
             return WorldObjectUtil.AllObjsWithComponent<StoreComponent>()
                 .Where(store => store != null && store.Parent != null && store.Enabled && store.Currency != null)
-                .Where(store => string.Equals(ReadName(store.Parent), offer.StoreName, StringComparison.Ordinal)
+                .Where(store => MatchesTarget(store.Parent, offer.StoreLink, offer.StoreName)
                     && string.Equals(ReadName(store.Currency), offer.Currency, StringComparison.Ordinal))
                 .FirstOrDefault(store => store.StoreData.SellOffers.Any(sell =>
                     sell?.Stack?.Item != null
@@ -214,11 +304,48 @@ namespace Eco.Mods.TechTree
 
             return WorldObjectUtil.AllObjsWithComponent<StorageComponent>()
                 .Where(storage => storage != null && storage.Parent != null)
-                .Where(storage => string.Equals(ReadName(storage.Parent), location.LocationName, StringComparison.Ordinal))
+                .Where(storage => MatchesTarget(storage.Parent, location.LocationLink, location.LocationName))
                 .FirstOrDefault(storage => storage.Inventory.Stacks.Any(stack =>
                     stack?.Item != null
                     && stack.Item.GetType() == itemType
                     && stack.Quantity > 0));
+        }
+
+        private static WorldObject FindWorldObject(HousingLinkTarget target)
+        {
+            if (target == null)
+            {
+                return null;
+            }
+
+            var storeParent = WorldObjectUtil.AllObjsWithComponent<StoreComponent>()
+                .Where(store => store?.Parent != null)
+                .Select(store => store.Parent)
+                .FirstOrDefault(parent => MatchesTarget(parent, target, target.DisplayName));
+            if (storeParent != null)
+            {
+                return storeParent;
+            }
+
+            return WorldObjectUtil.AllObjsWithComponent<StorageComponent>()
+                .Where(storage => storage?.Parent != null)
+                .Select(storage => storage.Parent)
+                .FirstOrDefault(parent => MatchesTarget(parent, target, target.DisplayName));
+        }
+
+        private static bool MatchesTarget(object instance, HousingLinkTarget target, string fallbackName)
+        {
+            if (instance == null)
+            {
+                return false;
+            }
+
+            if (target?.RuntimeId != null && RuntimeHelpers.GetHashCode(instance) == target.RuntimeId.Value)
+            {
+                return true;
+            }
+
+            return string.Equals(ReadName(instance), target?.DisplayName ?? fallbackName, StringComparison.Ordinal);
         }
 
         private static Type FindType(string typeName)
@@ -278,13 +405,16 @@ namespace Eco.Mods.TechTree
 
         private sealed class TooltipEntry
         {
-            public TooltipEntry(string room, HousingRoomAdditionAdvice addition)
+            public TooltipEntry(string room, HousingLinkTarget roomLink, HousingRoomAdditionAdvice addition)
             {
                 this.Room = room;
+                this.RoomLink = roomLink;
                 this.Addition = addition;
             }
 
             public string Room { get; }
+
+            public HousingLinkTarget RoomLink { get; }
 
             public HousingRoomAdditionAdvice Addition { get; }
         }

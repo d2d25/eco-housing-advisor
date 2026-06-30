@@ -15,6 +15,20 @@ namespace EcoHousingAdvisor.Domain
             double? duplicateMultiplier,
             double? estimatedContribution,
             bool estimated)
+            : this(displayName, itemTypeName, category, typeForRoomLimit, baseValue, duplicateMultiplier, estimatedContribution, estimated, null)
+        {
+        }
+
+        public HousingPropertyRoomObjectValue(
+            string displayName,
+            string itemTypeName,
+            string category,
+            string typeForRoomLimit,
+            double? baseValue,
+            double? duplicateMultiplier,
+            double? estimatedContribution,
+            bool estimated,
+            HousingLinkTarget objectLink)
         {
             this.DisplayName = displayName;
             this.ItemTypeName = itemTypeName;
@@ -24,6 +38,7 @@ namespace EcoHousingAdvisor.Domain
             this.DuplicateMultiplier = duplicateMultiplier;
             this.EstimatedContribution = estimatedContribution;
             this.Estimated = estimated;
+            this.ObjectLink = objectLink;
         }
 
         public string DisplayName { get; }
@@ -41,6 +56,8 @@ namespace EcoHousingAdvisor.Domain
         public double? EstimatedContribution { get; }
 
         public bool Estimated { get; }
+
+        public HousingLinkTarget ObjectLink { get; }
     }
 
     public sealed class HousingPropertyRoomValue
@@ -54,6 +71,20 @@ namespace EcoHousingAdvisor.Domain
             IReadOnlyDictionary<string, double> categoryValues = null,
             IReadOnlyList<HousingPropertyRoomObjectValue> objects = null,
             string ecoDescription = null)
+            : this(roomName, category, value, tier, existingTypeCounts, categoryValues, objects, ecoDescription, HousingLinkTarget.RoomCategory(category ?? roomName))
+        {
+        }
+
+        public HousingPropertyRoomValue(
+            string roomName,
+            string category,
+            double? value,
+            double? tier,
+            IReadOnlyDictionary<string, int> existingTypeCounts,
+            IReadOnlyDictionary<string, double> categoryValues,
+            IReadOnlyList<HousingPropertyRoomObjectValue> objects,
+            string ecoDescription,
+            HousingLinkTarget roomCategoryLink)
         {
             this.RoomName = roomName;
             this.Category = category;
@@ -63,6 +94,7 @@ namespace EcoHousingAdvisor.Domain
             this.CategoryValues = categoryValues ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             this.Objects = objects ?? Array.Empty<HousingPropertyRoomObjectValue>();
             this.EcoDescription = ecoDescription;
+            this.RoomCategoryLink = roomCategoryLink;
         }
 
         public string RoomName { get; }
@@ -80,6 +112,8 @@ namespace EcoHousingAdvisor.Domain
         public IReadOnlyList<HousingPropertyRoomObjectValue> Objects { get; }
 
         public string EcoDescription { get; }
+
+        public HousingLinkTarget RoomCategoryLink { get; }
 
         public int CountExistingType(string typeForRoomLimit)
         {
