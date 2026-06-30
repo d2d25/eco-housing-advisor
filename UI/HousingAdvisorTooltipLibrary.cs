@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Eco.Gameplay.Items;
 using Eco.Gameplay.Housing.PropertyValues;
@@ -9,6 +10,7 @@ using Eco.Shared.Items;
 using Eco.Shared.Localization;
 using Eco.Shared.Logging;
 using Eco.Shared.Utils;
+using EcoHousingAdvisor.Domain;
 using EcoHousingAdvisor.EcoRuntime;
 using EcoHousingAdvisor.Presentation;
 
@@ -29,9 +31,34 @@ namespace Eco.Mods.TechTree
                     return LocString.Empty;
                 }
 
+                var property = new EcoPropertyValueReader().Read(user?.ResidencyPropertyValue);
+                var itemGroup = new HousingFurnitureGroup(
+                    item.Category,
+                    item.TypeForRoomLimit,
+                    item.BaseValue,
+                    item.DiminishingReturnMultiplier,
+                    new[] { item });
+                var availability = new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>
+                {
+                    [item.ItemTypeName] = new HousingItemAvailability(
+                        item.ItemTypeName,
+                        new HousingOwnedItemLocation[0],
+                        new HousingStoreOffer[0],
+                        new[]
+                        {
+                            new HousingCraftHint("Available for tooltip calculation", 0, new string[0], true),
+                        }),
+                });
+                var advice = new HousingPropertyAdviceEngine().BuildAdvice(
+                    property,
+                    new[] { itemGroup },
+                    availability,
+                    50,
+                    1);
+
                 return new TooltipSection(
                     Localizer.DoStr("Eco Housing Advisor"),
-                    HousingAdvisorRichTooltipRenderer.RenderItemTooltip(item));
+                    HousingAdvisorRichTooltipRenderer.RenderItemTooltip(advice, property));
             }
             catch (Exception exception)
             {

@@ -22,21 +22,35 @@ namespace Eco.Mods.TechTree
 {
     public static class HousingAdvisorRichTooltipRenderer
     {
-        public static LocString RenderItemTooltip(HousingFurnitureItem item)
+        public static LocString RenderItemTooltip(HousingPropertyAdvice advice, HousingPropertyValueSnapshot property)
         {
+            var entry = advice.NewRooms
+                .SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.RoomName, room.Room.Category, room.Room.RoomCategoryLink, true, addition)))
+                .Concat(advice.Rooms.SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.RoomName, room.Room.Category, room.Room.RoomCategoryLink, false, addition))))
+                .OrderByDescending(candidate => candidate.Addition.EstimatedGain)
+                .FirstOrDefault();
+
             var sb = new LocStringBuilder();
+            if (entry == null || entry.Addition.EstimatedGain <= 0)
+            {
+                sb.AppendLine(Localizer.DoStr("No useful gain on your current property.").Color("#C0C0C0"));
+                return sb.ToLocString();
+            }
+
             sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
-                "Category: {0}",
-                Link(HousingLinkTarget.RoomCategory(item.Category), item.Category))));
+                "This would add up to {0} XP/day to your property.",
+                PositiveGain(entry.Addition.EstimatedGain))));
             sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
-                "Base value: {0}",
-                PositiveGain(item.BaseValue))));
-            sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
-                "Type limit: {0}",
-                Localizer.NotLocalizedStr(item.TypeForRoomLimit ?? "none").Color("#00A7FF"))));
-            sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
-                "Duplicate multiplier: {0}",
-                Text.Info(HousingFurnitureFormatter.FormatMultiplier(item.DiminishingReturnMultiplier)))));
+                "Best placement: {0}.",
+                PlacementLink(entry))));
+
+            if (property?.TotalValue != null)
+            {
+                sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
+                    "Property would reach about {0} XP/day.",
+                    Text.Info(HousingFurnitureFormatter.FormatBaseValue(property.TotalValue.Value + entry.Addition.EstimatedGain)))));
+            }
+
             return sb.ToLocString();
         }
 
