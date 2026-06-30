@@ -31,6 +31,9 @@ public static class HousingAdvisorDomainTests
         SuggestsMissingBathroomWhenBedroomExists();
         AppliesDuplicatePenaltyFromMappedRoomTypes();
         ReadsFakeRoomFurnitureTypeLimits();
+        ReadsFakePropertyValueRoomsObjectsAndDescriptions();
+        RendersGlobalRoomCommands();
+        AppliesBedDuplicatePenaltyFromGlobalResidence();
         HidesUnavailablePropertyAdvice();
         DoesNotApplyFinalPropertyMultiplierToDelta();
         AppliesSupportCategoryCap();
@@ -527,6 +530,107 @@ public static class HousingAdvisorDomainTests
         AssertEqual(1, snapshot.Rooms[0].CountExistingType("Chair"), "mapped chair count");
     }
 
+    private static void ReadsFakePropertyValueRoomsObjectsAndDescriptions()
+    {
+        var fake = new FakePropertyValue
+        {
+            TotalValue = 2.5,
+            Rooms =
+            [
+                new FakeRoom
+                {
+                    Name = "Bedroom",
+                    RoomValue = new FakeRoomValue { Value = 2.5, Description = "Stump Bed +2.5" },
+                    RoomStats = new FakeRoomStats
+                    {
+                        AverageTier = 1,
+                        ContainedWorldObjects =
+                        [
+                            new FakeFurniture
+                            {
+                                Name = "Stump Bed",
+                                HomeValue = new FakeHomeValue
+                                {
+                                    Category = "Bedroom",
+                                    TypeForRoomLimit = "Bed",
+                                    BaseValue = 2.5,
+                                    DiminishingReturnMultiplier = 0.4,
+                                },
+                            },
+                        ],
+                    },
+                },
+            ],
+        };
+
+        var snapshot = new EcoPropertyValueReader().Read(fake);
+
+        AssertEqual(1, snapshot.Rooms.Count, "global room count");
+        AssertEqual(1, snapshot.Rooms[0].CountExistingType("Bed"), "global bed count");
+        AssertEqual("Stump Bed", snapshot.Rooms[0].Objects[0].DisplayName, "room object name");
+        AssertEqual("Stump Bed +2.5", snapshot.Rooms[0].EcoDescription, "room eco detail");
+    }
+
+    private static void RendersGlobalRoomCommands()
+    {
+        var snapshot = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            2.5,
+            1,
+            1,
+            [
+                new HousingPropertyRoomValue(
+                    "Bedroom",
+                    "Bedroom",
+                    2.5,
+                    1,
+                    new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Bed"] = 1 },
+                    null,
+                    [
+                        new HousingPropertyRoomObjectValue("Stump Bed", "StumpBedItem", "Bedroom", "Bed", 2.5, 0.4, 2.5, true),
+                    ],
+                    "Stump Bed +2.5"),
+            ],
+            [],
+            DateTimeOffset.UtcNow);
+
+        var renderer = new AdvisorTextRenderer();
+        var roomsOutput = renderer.RenderRooms(snapshot);
+        var roomOutput = renderer.RenderRoomDetails(snapshot, "Bedroom");
+
+        AssertContains("Total Eco: 2.5 XP/day", roomsOutput);
+        AssertContains("types: Bed x1", roomsOutput);
+        AssertContains("Stump Bed", roomOutput);
+        AssertContains("Next Bed: duplicate multiplier 0.4, existing x1.", roomOutput);
+    }
+
+    private static void AppliesBedDuplicatePenaltyFromGlobalResidence()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            2.5,
+            1,
+            1,
+            [
+                new HousingPropertyRoomValue(
+                    "Bedroom",
+                    "Bedroom",
+                    2.5,
+                    1,
+                    new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Bed"] = 1 }),
+            ],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Stump Bed", "Bedroom", 2.5, "Bed", 0.4),
+        ]);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 1, 1);
+
+        AssertEqual(1.0, advice.Rooms[0].Additions[0].EstimatedGain, "second bed duplicate gain");
+    }
+
     private static void HidesUnavailablePropertyAdvice()
     {
         var property = new HousingPropertyValueSnapshot(
@@ -653,23 +757,51 @@ public static class HousingAdvisorDomainTests
         public double TotalValue { get; set; }
 
         public Dictionary<string, FakeRoomValue> RoomValues { get; set; } = new Dictionary<string, FakeRoomValue>();
+
+        public List<FakeRoom> Rooms { get; set; } = new List<FakeRoom>();
+    }
+
+    private sealed class FakeRoom
+    {
+        public string Name { get; set; }
+
+        public FakeRoomValue RoomValue { get; set; } = new FakeRoomValue();
+
+        public FakeRoomStats RoomStats { get; set; } = new FakeRoomStats();
     }
 
     private sealed class FakeRoomValue
     {
         public double Value { get; set; }
 
+        public string Description { get; set; }
+
         public List<FakeFurniture> Furniture { get; set; } = new List<FakeFurniture>();
+    }
+
+    private sealed class FakeRoomStats
+    {
+        public double AverageTier { get; set; }
+
+        public List<FakeFurniture> ContainedWorldObjects { get; set; } = new List<FakeFurniture>();
     }
 
     private sealed class FakeFurniture
     {
+        public string Name { get; set; }
+
         public FakeHomeValue HomeValue { get; set; } = new FakeHomeValue();
     }
 
     private sealed class FakeHomeValue
     {
+        public string Category { get; set; }
+
         public string TypeForRoomLimit { get; set; }
+
+        public double BaseValue { get; set; }
+
+        public double DiminishingReturnMultiplier { get; set; } = 1;
     }
 
     private static void AssertEqual<T>(T expected, T actual, string label)

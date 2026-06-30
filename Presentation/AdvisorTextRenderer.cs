@@ -88,62 +88,142 @@ namespace EcoHousingAdvisor.Presentation
                 "/housingadvisor search chair - search furniture",
                 "/housingadvisor hadebug - cache/discovery debug",
                 "/housingadvisor harefresh - rebuild furniture cache",
-                "/housingadvisor haresidence - probe residence rooms, tiers, and caps",
-                "/housingadvisor hadiag Bed - diagnose current room furniture type detection",
+                "/housingadvisor harooms - list active residence rooms",
+                "/housingadvisor haroom Bedroom - show furniture details for one room type",
                 "/housingadvisor uistatus - show UI probe status",
                 "/housingadvisor hahelp - show this help",
             });
         }
 
-        public string RenderRoomDiagnostics(HousingRoomDiagnostics diagnostics, string typeFilter)
+        public string RenderRooms(HousingPropertyValueSnapshot snapshot)
         {
             var lines = new List<string>
             {
-                string.Format(
-                    CultureInfo.InvariantCulture,
-                    "Eco Housing Advisor room diagnostic: {0}, category {1}, value {2}, tier {3}. Objects: {4}.",
-                    diagnostics.RoomName,
-                    diagnostics.RoomType,
-                    FormatNullable(diagnostics.RoomValue),
-                    FormatNullable(diagnostics.Tier),
-                    diagnostics.Objects.Count),
+                "Eco Housing Advisor: active residence rooms.",
             };
 
-            lines.Add(diagnostics.TypeCounts.Count == 0
-                ? "Detected type limits: none"
-                : "Detected type limits: " + string.Join(", ", diagnostics.TypeCounts.OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase).Select(entry => entry.Key + " x" + entry.Value)));
-
-            var objects = diagnostics.Objects
-                .Where(item => string.IsNullOrWhiteSpace(typeFilter)
-                    || (item.TypeForRoomLimit ?? string.Empty).IndexOf(typeFilter, StringComparison.OrdinalIgnoreCase) >= 0
-                    || (item.DisplayName ?? string.Empty).IndexOf(typeFilter, StringComparison.OrdinalIgnoreCase) >= 0
-                    || (item.ObjectType ?? string.Empty).IndexOf(typeFilter, StringComparison.OrdinalIgnoreCase) >= 0)
-                .Take(12)
-                .ToArray();
-
-            if (objects.Length == 0)
+            if (snapshot.Rooms.Count == 0)
             {
-                lines.Add(string.IsNullOrWhiteSpace(typeFilter)
-                    ? "No readable contained objects."
-                    : "No contained objects matched '" + typeFilter + "'.");
+                lines.Add("No active residence rooms were readable from Eco.");
+                foreach (var warning in snapshot.Warnings)
+                {
+                    lines.Add("Note: " + warning);
+                }
+
+                return string.Join(Environment.NewLine, lines);
             }
 
-            foreach (var item in objects)
+            var roomSum = snapshot.Rooms.Sum(room => room.Value ?? 0);
+            lines.Add(string.Format(
+                CultureInfo.InvariantCulture,
+                "Total Eco: {0} XP/day. Rooms sum: {1} XP/day.",
+                FormatNullable(snapshot.TotalValue),
+                HousingFurnitureFormatter.FormatBaseValue(roomSum)));
+
+            foreach (var room in snapshot.Rooms.OrderBy(room => room.Category, StringComparer.OrdinalIgnoreCase).ThenBy(room => room.RoomName, StringComparer.OrdinalIgnoreCase))
             {
                 lines.Add(string.Format(
                     CultureInfo.InvariantCulture,
-                    "- {0}: type {1}, category {2}, base {3}, duplicate multiplier {4}, housing component {5}",
-                    item.DisplayName,
-                    string.IsNullOrWhiteSpace(item.TypeForRoomLimit) ? "?" : item.TypeForRoomLimit,
-                    string.IsNullOrWhiteSpace(item.Category) ? "?" : item.Category,
-                    FormatNullable(item.BaseValue),
-                    FormatNullable(item.DuplicateMultiplier),
-                    item.HasHousingComponent ? "yes" : "no"));
+                    "- {0}: type {1}, tier {2}, Eco {3} XP/day, objects {4}",
+                    room.RoomName,
+                    room.Category,
+                    FormatNullable(room.Tier),
+                    FormatNullable(room.Value),
+                    room.Objects.Count));
+
+                lines.Add("  types: " + room.FormatKnownExistingTypes());
             }
 
-            foreach (var warning in diagnostics.Warnings)
+            foreach (var warning in snapshot.Warnings)
             {
-                lines.Add("Warning: " + warning);
+                lines.Add("Note: " + warning);
+            }
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        public string RenderRoomDetails(HousingPropertyValueSnapshot snapshot, string roomType)
+        {
+            var normalized = HousingRoomRules.NormalizeRoomName(roomType);
+            var rooms = snapshot.Rooms
+                .Where(room => string.Equals(HousingRoomRules.NormalizeRoomName(room.Category), normalized, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(HousingRoomRules.NormalizeRoomName(room.RoomName), normalized, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(room => room.RoomName, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            if (rooms.Length == 0)
+            {
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Eco Housing Advisor: no active residence room found for '{0}'. Use /housingadvisor harooms to see readable rooms.",
+                    roomType);
+            }
+
+            var lines = new List<string>
+            {
+                string.Format(CultureInfo.InvariantCulture, "Eco Housing Advisor: {0} room details.", normalized),
+            };
+
+            foreach (var room in rooms)
+            {
+                lines.Add(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0}: Eco {1} XP/day, tier {2}, objects {3}",
+                    room.RoomName,
+                    FormatNullable(room.Value),
+                    FormatNullable(room.Tier),
+                    room.Objects.Count));
+
+                if (!string.IsNullOrWhiteSpace(room.EcoDescription))
+                {
+                    lines.Add("Eco detail: " + CompactLocString(room.EcoDescription));
+                }
+
+                if (room.Objects.Count == 0)
+                {
+                    lines.Add("No furniture objects readable from this room.");
+                }
+
+                foreach (var item in room.Objects.OrderBy(item => item.TypeForRoomLimit, StringComparer.OrdinalIgnoreCase).ThenByDescending(item => item.EstimatedContribution ?? item.BaseValue ?? 0).Take(30))
+                {
+                    lines.Add(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "- {0}: category {1}, type {2}, base {3}, gives +{4} XP/day{5}",
+                        item.DisplayName,
+                        string.IsNullOrWhiteSpace(item.Category) ? "?" : item.Category,
+                        string.IsNullOrWhiteSpace(item.TypeForRoomLimit) ? "?" : item.TypeForRoomLimit,
+                        FormatNullable(item.BaseValue),
+                        FormatNullable(item.EstimatedContribution),
+                        item.Estimated ? " est." : string.Empty));
+                }
+
+                var calculated = room.Objects.Sum(item => item.EstimatedContribution ?? 0);
+                if (room.Value != null && room.Objects.Count > 0)
+                {
+                    var delta = calculated - room.Value.Value;
+                    lines.Add(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Check: calculated {0} vs Eco {1} XP/day, diff {2}.",
+                        HousingFurnitureFormatter.FormatBaseValue(calculated),
+                        FormatNullable(room.Value),
+                        HousingFurnitureFormatter.FormatBaseValue(delta)));
+                }
+
+                foreach (var type in room.ExistingTypeCounts.OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase).Take(12))
+                {
+                    var example = room.Objects.FirstOrDefault(item => string.Equals(item.TypeForRoomLimit, type.Key, StringComparison.OrdinalIgnoreCase));
+                    if (example?.DuplicateMultiplier == null)
+                    {
+                        continue;
+                    }
+
+                    lines.Add(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Next {0}: duplicate multiplier {1}, existing x{2}.",
+                        type.Key,
+                        HousingFurnitureFormatter.FormatMultiplier(Math.Pow(example.DuplicateMultiplier.Value, type.Value)),
+                        type.Value));
+                }
             }
 
             return string.Join(Environment.NewLine, lines);
@@ -536,6 +616,13 @@ namespace EcoHousingAdvisor.Presentation
             return value == null
                 ? "?"
                 : HousingFurnitureFormatter.FormatBaseValue(value.Value);
+        }
+
+        private static string CompactLocString(string value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? string.Empty
+                : value.Replace(Environment.NewLine, " ").Replace("\n", " ").Replace("\r", " ").Trim();
         }
     }
 }

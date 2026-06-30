@@ -4,6 +4,45 @@ using System.Linq;
 
 namespace EcoHousingAdvisor.Domain
 {
+    public sealed class HousingPropertyRoomObjectValue
+    {
+        public HousingPropertyRoomObjectValue(
+            string displayName,
+            string itemTypeName,
+            string category,
+            string typeForRoomLimit,
+            double? baseValue,
+            double? duplicateMultiplier,
+            double? estimatedContribution,
+            bool estimated)
+        {
+            this.DisplayName = displayName;
+            this.ItemTypeName = itemTypeName;
+            this.Category = category;
+            this.TypeForRoomLimit = typeForRoomLimit;
+            this.BaseValue = baseValue;
+            this.DuplicateMultiplier = duplicateMultiplier;
+            this.EstimatedContribution = estimatedContribution;
+            this.Estimated = estimated;
+        }
+
+        public string DisplayName { get; }
+
+        public string ItemTypeName { get; }
+
+        public string Category { get; }
+
+        public string TypeForRoomLimit { get; }
+
+        public double? BaseValue { get; }
+
+        public double? DuplicateMultiplier { get; }
+
+        public double? EstimatedContribution { get; }
+
+        public bool Estimated { get; }
+    }
+
     public sealed class HousingPropertyRoomValue
     {
         public HousingPropertyRoomValue(
@@ -12,7 +51,9 @@ namespace EcoHousingAdvisor.Domain
             double? value,
             double? tier = null,
             IReadOnlyDictionary<string, int> existingTypeCounts = null,
-            IReadOnlyDictionary<string, double> categoryValues = null)
+            IReadOnlyDictionary<string, double> categoryValues = null,
+            IReadOnlyList<HousingPropertyRoomObjectValue> objects = null,
+            string ecoDescription = null)
         {
             this.RoomName = roomName;
             this.Category = category;
@@ -20,6 +61,8 @@ namespace EcoHousingAdvisor.Domain
             this.Tier = tier;
             this.ExistingTypeCounts = existingTypeCounts ?? new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             this.CategoryValues = categoryValues ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            this.Objects = objects ?? Array.Empty<HousingPropertyRoomObjectValue>();
+            this.EcoDescription = ecoDescription;
         }
 
         public string RoomName { get; }
@@ -33,6 +76,10 @@ namespace EcoHousingAdvisor.Domain
         public IReadOnlyDictionary<string, int> ExistingTypeCounts { get; }
 
         public IReadOnlyDictionary<string, double> CategoryValues { get; }
+
+        public IReadOnlyList<HousingPropertyRoomObjectValue> Objects { get; }
+
+        public string EcoDescription { get; }
 
         public int CountExistingType(string typeForRoomLimit)
         {
