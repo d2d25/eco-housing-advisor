@@ -327,9 +327,26 @@ namespace Eco.Mods.TechTree
             var body = description is LocString locDescription
                 ? locDescription
                 : Localizer.NotLocalizedStr(description.ToString());
-            var label = RoomCategoryLink(target.DisplayName ?? target.TypeName ?? fallback);
+            var label = RoomCategoryFoldoutLabel(target.DisplayName ?? target.TypeName ?? fallback);
             link = TextLoc.Foldout(label, Localizer.DoStr("Room Details"), body);
             return true;
+        }
+
+        private static LocString RoomCategoryFoldoutLabel(string categoryName)
+        {
+            try
+            {
+                var category = HousingConfig.GetRoomCategory(categoryName);
+                if (category != null)
+                {
+                    return category.DisplayNameColored;
+                }
+            }
+            catch
+            {
+            }
+
+            return Localizer.NotLocalizedStr(categoryName ?? "Room").Color("#00A7FF");
         }
 
         private static bool TryBuildEcoUiLink(object instance, out LocString link)
