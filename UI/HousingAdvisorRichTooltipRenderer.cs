@@ -15,6 +15,7 @@ using Eco.Shared.Items;
 using Eco.Shared.Localization;
 using Eco.Shared.Utils;
 using EcoHousingAdvisor.Domain;
+using EcoHousingAdvisor.EcoRuntime;
 using EcoHousingAdvisor.Presentation;
 
 namespace Eco.Mods.TechTree
@@ -213,19 +214,20 @@ namespace Eco.Mods.TechTree
 
         private static LocString PlacementLink(TooltipEntry entry)
         {
-            var category = Link(entry.RoomLink, entry.Category ?? entry.Room);
+            var category = entry.IsNewRoom
+                ? RoomCategoryLink(entry.Category ?? entry.Room)
+                : Link(entry.RoomLink, entry.Room ?? entry.Category);
             if (entry.IsNewRoom)
             {
                 return Localizer.Do(FormattableStringFactory.Create("new {0}", category));
             }
 
-            if (string.Equals(entry.Room, entry.Category, StringComparison.OrdinalIgnoreCase))
+            if (entry.RoomLink?.Kind == HousingLinkTargetKind.RoomValue)
             {
-                return Localizer.Do(FormattableStringFactory.Create("your {0}", category));
+                return category;
             }
 
-            var roomName = Localizer.NotLocalizedStr(entry.Room ?? "room").Color("#00A7FF");
-            return Localizer.Do(FormattableStringFactory.Create("your {0} ({1})", roomName, category));
+            return category;
         }
 
         private static LocString Link(HousingLinkTarget target, string fallback)
@@ -239,6 +241,8 @@ namespace Eco.Mods.TechTree
             {
                 case HousingLinkTargetKind.ItemType:
                     return ItemTypeLink(target.TypeName, target.DisplayName ?? fallback);
+                case HousingLinkTargetKind.RoomValue:
+                    return RegisteredEcoLinkOrFallback(target, fallback);
                 case HousingLinkTargetKind.RoomCategory:
                     return RoomCategoryLink(target.TypeName ?? target.DisplayName ?? fallback);
                 case HousingLinkTargetKind.Store:
@@ -284,6 +288,59 @@ namespace Eco.Mods.TechTree
             }
 
             return Localizer.NotLocalizedStr(categoryName ?? "Room").Color("#00A7FF");
+        }
+
+        private static LocString RegisteredEcoLinkOrFallback(HousingLinkTarget target, string fallback)
+        {
+            if (EcoLinkTargetRegistry.TryGet(target, out var instance)
+                && TryBuildEcoUiLink(instance, out var link))
+            {
+                return link;
+            }
+
+            return RoomCategoryLink(target.DisplayName ?? target.TypeName ?? fallback);
+        }
+
+        private static bool TryBuildEcoUiLink(object instance, out LocString link)
+        {
+            link = LocString.Empty;
+            if (instance == null)
+            {
+                return false;
+            }
+
+            var instanceType = instance.GetType();
+            foreach (var method in AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(SafeGetTypes)
+                .SelectMany(type => type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+                .Where(method => method.Name == "UILink"
+                    && method.IsDefined(typeof(ExtensionAttribute), false)
+                    && method.GetParameters().Length >= 1
+                    && method.GetParameters()[0].ParameterType.IsAssignableFrom(instanceType)))
+            {
+                try
+                {
+                    var parameters = method.GetParameters();
+                    var args = new object[parameters.Length];
+                    args[0] = instance;
+                    for (var i = 1; i < args.Length; i++)
+                    {
+                        args[i] = parameters[i].HasDefaultValue ? parameters[i].DefaultValue : null;
+                    }
+
+                    var value = method.Invoke(null, args);
+                    if (value is LocString locString)
+                    {
+                        link = locString;
+                        return true;
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            return false;
         }
 
         private static LocString WorldObjectLinkOrFallback(HousingLinkTarget target, string fallback)

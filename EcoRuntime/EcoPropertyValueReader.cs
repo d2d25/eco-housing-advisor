@@ -187,7 +187,14 @@ namespace EcoHousingAdvisor.EcoRuntime
                 categoryValues,
                 objects,
                 ReadDisplayString(ReadMember(roomValue, "Description")),
-                HousingLinkTarget.RoomCategory(string.IsNullOrWhiteSpace(category) ? roomName : category));
+                ReadRoomLink(roomValue, roomSource, string.IsNullOrWhiteSpace(category) ? roomName : category));
+        }
+
+        private static HousingLinkTarget ReadRoomLink(object roomValue, object roomSource, string displayName)
+        {
+            return EcoLinkTargetRegistry.Register(HousingLinkTargetKind.RoomValue, roomValue, displayName)
+                ?? EcoLinkTargetRegistry.Register(HousingLinkTargetKind.RoomValue, roomSource, displayName)
+                ?? HousingLinkTarget.RoomCategory(displayName);
         }
 
         private static IReadOnlyDictionary<string, double> ReadCategoryValues(object roomSource)

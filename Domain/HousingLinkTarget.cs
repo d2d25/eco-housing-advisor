@@ -5,6 +5,7 @@ namespace EcoHousingAdvisor.Domain
         None,
         ItemType,
         WorldObject,
+        RoomValue,
         RoomCategory,
         User,
         Store,
