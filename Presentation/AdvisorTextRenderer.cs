@@ -190,13 +190,12 @@ namespace EcoHousingAdvisor.Presentation
                 {
                     lines.Add(string.Format(
                         CultureInfo.InvariantCulture,
-                        "- {0}: category {1}, type {2}, base {3}, gives +{4} XP/day{5}",
+                        "- {0}: category {1}, type {2}, base {3}, gives +{4} XP/day",
                         item.DisplayName,
                         string.IsNullOrWhiteSpace(item.Category) ? "?" : item.Category,
                         string.IsNullOrWhiteSpace(item.TypeForRoomLimit) ? "?" : item.TypeForRoomLimit,
                         FormatNullable(item.BaseValue),
-                        FormatNullable(item.EstimatedContribution),
-                        item.Estimated ? " est." : string.Empty));
+                        FormatNullable(item.EstimatedContribution)));
                 }
 
                 var calculated = room.Objects.Sum(item => item.EstimatedContribution ?? 0);
@@ -321,7 +320,7 @@ namespace EcoHousingAdvisor.Presentation
                             var firstItem = addition.Group.Items[0];
                             lines.Add(string.Format(
                                 CultureInfo.InvariantCulture,
-                                "- {0} in {1}: +{2} XP/day est. ({3}, {4}{5})",
+                                "- {0} in {1}: +{2} XP/day ({3}, {4}{5})",
                                 firstItem.DisplayName,
                                 roomAdvice.Room.RoomName,
                                 HousingFurnitureFormatter.FormatBaseValue(addition.EstimatedGain),
@@ -356,7 +355,7 @@ namespace EcoHousingAdvisor.Presentation
                 lines.Add("Residents: " + snapshot.ResidentCount.Value.ToString(CultureInfo.InvariantCulture));
             }
 
-            lines.Add("XP values are est.; architecture/culture multipliers are already reflected by Eco totals, not reapplied to suggestions.");
+            lines.Add("Architecture/culture multipliers are already reflected by Eco totals, not reapplied to suggestions.");
             return string.Join(Environment.NewLine, lines);
         }
 
@@ -395,7 +394,7 @@ namespace EcoHousingAdvisor.Presentation
                 var item = entry.Addition.Group.Items[0];
                 lines.Add(string.Format(
                     CultureInfo.InvariantCulture,
-                    "- {0}: {1} +{2} XP/day est.",
+                    "- {0}: {1} +{2} XP/day",
                     entry.Room,
                     item.DisplayName,
                     HousingFurnitureFormatter.FormatBaseValue(entry.Addition.EstimatedGain)));
@@ -421,7 +420,7 @@ namespace EcoHousingAdvisor.Presentation
                     var firstItem = addition.Group.Items[0];
                     lines.Add(string.Format(
                         CultureInfo.InvariantCulture,
-                        "- {0}: +{1} XP/day est. ({2})",
+                        "- {0}: +{1} XP/day ({2})",
                         firstItem.DisplayName,
                         HousingFurnitureFormatter.FormatBaseValue(addition.EstimatedGain),
                         addition.CapNote));
@@ -458,7 +457,7 @@ namespace EcoHousingAdvisor.Presentation
                 var firstItem = suggestion.Group.Items[0];
                 lines.Add(string.Format(
                     CultureInfo.InvariantCulture,
-                    "{0}. {1}: +{2} XP/day est., useful in {3}, type {4}",
+                    "{0}. {1}: +{2} XP/day, useful in {3}, type {4}",
                     index++,
                     firstItem.DisplayName,
                     HousingFurnitureFormatter.FormatBaseValue(suggestion.EstimatedGain),

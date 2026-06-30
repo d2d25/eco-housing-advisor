@@ -238,7 +238,7 @@ public static class HousingAdvisorDomainTests
 
         AssertContains("best additions for Seating", output);
         AssertContains("Fancy Chair", output);
-        AssertContains("+3 XP/day est.", output);
+        AssertContains("+3 XP/day", output);
         AssertContains("useful in Living Room, Bedroom, Kitchen, Bathroom, Outdoor, Cultural", output);
         AssertContains("Buy: 12 Credits at Best Furniture", output);
         AssertContains("seller Ada", output);

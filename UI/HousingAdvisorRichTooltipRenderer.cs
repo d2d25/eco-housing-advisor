@@ -42,8 +42,8 @@ namespace Eco.Mods.TechTree
         public static LocString RenderPropertyTooltip(HousingPropertyAdvice advice)
         {
             var entries = advice.NewRooms
-                .SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.Category, room.Room.RoomCategoryLink, addition)))
-                .Concat(advice.Rooms.SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.RoomName, room.Room.RoomCategoryLink, addition))))
+                .SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.RoomName, room.Room.Category, room.Room.RoomCategoryLink, true, addition)))
+                .Concat(advice.Rooms.SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.RoomName, room.Room.Category, room.Room.RoomCategoryLink, false, addition))))
                 .OrderByDescending(entry => entry.Addition.EstimatedGain)
                 .Take(3)
                 .ToArray();
@@ -63,11 +63,11 @@ namespace Eco.Mods.TechTree
                 var item = entry.Addition.Group.Items[0];
                 var itemLink = ItemLink(item);
                 var gain = PositiveGain(entry.Addition.EstimatedGain);
-                var room = Link(entry.RoomLink, entry.Room);
+                var room = PlacementLink(entry);
                 var places = AvailabilityLinks(entry.Addition.Availability);
 
                 sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
-                    "{0} for {1} will provide you {2} XP/day est. and can be found here: {3}",
+                    "{0} for {1} will provide you {2} XP/day and can be found here: {3}",
                     itemLink,
                     room,
                     gain,
@@ -209,6 +209,23 @@ namespace Eco.Mods.TechTree
             }
 
             return Localizer.NotLocalizedStr(userName).Color("#00A7FF");
+        }
+
+        private static LocString PlacementLink(TooltipEntry entry)
+        {
+            var category = Link(entry.RoomLink, entry.Category ?? entry.Room);
+            if (entry.IsNewRoom)
+            {
+                return Localizer.Do(FormattableStringFactory.Create("new {0}", category));
+            }
+
+            if (string.Equals(entry.Room, entry.Category, StringComparison.OrdinalIgnoreCase))
+            {
+                return Localizer.Do(FormattableStringFactory.Create("your {0}", category));
+            }
+
+            var roomName = Localizer.NotLocalizedStr(entry.Room ?? "room").Color("#00A7FF");
+            return Localizer.Do(FormattableStringFactory.Create("your {0} ({1})", roomName, category));
         }
 
         private static LocString Link(HousingLinkTarget target, string fallback)
@@ -405,16 +422,22 @@ namespace Eco.Mods.TechTree
 
         private sealed class TooltipEntry
         {
-            public TooltipEntry(string room, HousingLinkTarget roomLink, HousingRoomAdditionAdvice addition)
+            public TooltipEntry(string room, string category, HousingLinkTarget roomLink, bool isNewRoom, HousingRoomAdditionAdvice addition)
             {
                 this.Room = room;
+                this.Category = category;
                 this.RoomLink = roomLink;
+                this.IsNewRoom = isNewRoom;
                 this.Addition = addition;
             }
 
             public string Room { get; }
 
+            public string Category { get; }
+
             public HousingLinkTarget RoomLink { get; }
+
+            public bool IsNewRoom { get; }
 
             public HousingRoomAdditionAdvice Addition { get; }
         }
