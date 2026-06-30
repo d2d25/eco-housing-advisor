@@ -21,14 +21,18 @@ namespace EcoHousingAdvisor.EcoRuntime
 
             var totalValue = ReadTotalValue(propertyValue);
             var residentCount = CountEnumerable(ReadMember(ReadMember(ReadMember(propertyValue, "Deed"), "Residency"), "Residents"));
-            foreach (var member in ReadMembers(propertyValue).OrderByDescending(member => string.Equals(member.Name, "Rooms", StringComparison.OrdinalIgnoreCase)))
+            var explicitRooms = ReadMember(propertyValue, "Rooms");
+            foreach (var room in ReadRoomValues(explicitRooms))
             {
-                if (!LooksLikeRoomCollection(member.Name))
+                if (!rooms.Any(existing => SameRoom(existing, room)))
                 {
-                    continue;
+                    rooms.Add(room);
                 }
+            }
 
-                foreach (var room in ReadRoomValues(member.Value))
+            if (rooms.Count == 0)
+            {
+                foreach (var room in ReadRoomValues(ReadMember(propertyValue, "RoomValues")))
                 {
                     if (!rooms.Any(existing => SameRoom(existing, room)))
                     {
@@ -72,12 +76,6 @@ namespace EcoHousingAdvisor.EcoRuntime
                 ?? TryReadDouble(instance, "HousingValue")
                 ?? TryReadDouble(instance, "XP")
                 ?? TryReadDouble(instance, "Experience");
-        }
-
-        private static bool LooksLikeRoomCollection(string memberName)
-        {
-            return memberName.IndexOf("Room", StringComparison.OrdinalIgnoreCase) >= 0
-                || memberName.IndexOf("Category", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static IEnumerable<HousingPropertyRoomValue> ReadRoomValues(object value)
@@ -130,11 +128,12 @@ namespace EcoHousingAdvisor.EcoRuntime
             var categorySource = key ?? pairKey ?? roomSource;
             var roomValue = ReadMember(roomSource, "RoomValue");
             var roomStats = ReadMember(roomSource, "RoomStats");
-            var category = NormalizeCategory(ReadDisplayString(categorySource)
-                ?? TryReadString(roomValue, "RoomCategory")
+            var category = NormalizeCategory(ReadRoomCategory(roomValue)
+                ?? ReadDisplayString(categorySource)
                 ?? TryReadString(roomSource, "Category")
                 ?? TryReadString(roomSource, "RoomCategory")
-                ?? TryReadString(roomSource, "BestRoomCategory"));
+                ?? TryReadString(roomSource, "BestRoomCategory")
+                ?? TryReadString(roomValue, "Title"));
 
             var roomName = NormalizeCategory(
                 TryReadString(roomSource, "Name")
@@ -147,7 +146,7 @@ namespace EcoHousingAdvisor.EcoRuntime
                 ?? TryReadDouble(roomSource, "HousingValue")
                 ?? TryReadDirectDouble(roomSource);
             var tierObject = ReadMember(roomValue, "Tier");
-            var tier = TryReadDouble(tierObject, "TierVal")
+            var tier = ReadTierValue(tierObject)
                 ?? TryReadDouble(roomStats, "AverageTier")
                 ?? TryReadDouble(roomSource, "Tier")
                 ?? TryReadDouble(roomSource, "MaterialTier")
@@ -280,6 +279,11 @@ namespace EcoHousingAdvisor.EcoRuntime
         private static IEnumerable<object> ReadFurnitureLikeObjects(object roomSource)
         {
             var roomStats = ReadMember(roomSource, "RoomStats");
+            foreach (var item in InvokeContainedComponents(roomStats, "HousingComponent"))
+            {
+                yield return item;
+            }
+
             foreach (var item in Enumerate(ReadMember(roomStats, "ContainedWorldObjects")))
             {
                 yield return item;
@@ -315,6 +319,46 @@ namespace EcoHousingAdvisor.EcoRuntime
                 || memberName.IndexOf("WorldObject", StringComparison.OrdinalIgnoreCase) >= 0
                 || memberName.IndexOf("Contained", StringComparison.OrdinalIgnoreCase) >= 0
                 || memberName.IndexOf("Object", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static IEnumerable<object> InvokeContainedComponents(object source, string componentTypeName)
+        {
+            if (source == null)
+            {
+                yield break;
+            }
+
+            var componentType = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(SafeGetTypes)
+                .FirstOrDefault(type => string.Equals(type.Name, componentTypeName, StringComparison.Ordinal));
+            if (componentType == null)
+            {
+                yield break;
+            }
+
+            var method = source.GetType()
+                .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(candidate => candidate.Name == "ContainedComponents"
+                    && candidate.IsGenericMethodDefinition
+                    && candidate.GetParameters().Length == 0);
+            if (method == null)
+            {
+                yield break;
+            }
+
+            object result = null;
+            try
+            {
+                result = method.MakeGenericMethod(componentType).Invoke(source, null);
+            }
+            catch
+            {
+            }
+
+            foreach (var item in Enumerate(result))
+            {
+                yield return item;
+            }
         }
 
         private static IEnumerable<object> Enumerate(object value)
@@ -361,8 +405,10 @@ namespace EcoHousingAdvisor.EcoRuntime
         private static string ReadObjectDisplayName(object source)
         {
             return ReadDisplayString(source)
+                ?? ReadDisplayString(ReadMember(source, "Parent"))
                 ?? ReadDisplayString(ReadMember(source, "Item"))
                 ?? ReadDisplayString(ReadMember(ReadMember(source, "Stack"), "Item"))
+                ?? ReadDisplayString(ReadMember(ReadMember(source, "Parent"), "Item"))
                 ?? source?.GetType().Name
                 ?? "Furniture";
         }
@@ -383,6 +429,8 @@ namespace EcoHousingAdvisor.EcoRuntime
 
             return ReadMember(source, "HomeValue")
                 ?? ReadMember(InvokeGetComponent(source, "HousingComponent"), "HomeValue")
+                ?? ReadMember(ReadMember(source, "Object"), "HomeValue")
+                ?? ReadMember(InvokeGetComponent(ReadMember(source, "Object"), "HousingComponent"), "HomeValue")
                 ?? ReadMember(ReadMember(source, "Item"), "HomeValue")
                 ?? ReadMember(InvokeGetComponent(ReadMember(source, "Parent"), "HousingComponent"), "HomeValue")
                 ?? ReadMember(ReadMember(ReadMember(source, "Stack"), "Item"), "HomeValue")
@@ -464,6 +512,46 @@ namespace EcoHousingAdvisor.EcoRuntime
             }
 
             return HousingRoomRules.NormalizeRoomName(value);
+        }
+
+        private static string ReadRoomCategory(object roomValue)
+        {
+            return ReadDisplayString(ReadMember(roomValue, "RoomCategory"))
+                ?? ReadDisplayString(ReadMember(roomValue, "Category"))
+                ?? ReadDisplayString(ReadMember(roomValue, "Title"))
+                ?? TryReadString(roomValue, "RoomCategory")
+                ?? TryReadString(roomValue, "Category");
+        }
+
+        private static double? ReadTierValue(object value)
+        {
+            return TryReadDouble(value, "TierVal")
+                ?? TryReadDouble(value, "Value")
+                ?? TryReadDouble(value, "Tier")
+                ?? TryReadDirectDouble(value)
+                ?? ExtractFirstNumber(value?.ToString());
+        }
+
+        private static double? ExtractFirstNumber(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            var chars = value
+                .SkipWhile(ch => !char.IsDigit(ch) && ch != '-' && ch != '.')
+                .TakeWhile(ch => char.IsDigit(ch) || ch == '-' || ch == '.' || ch == ',')
+                .ToArray();
+            if (chars.Length == 0)
+            {
+                return null;
+            }
+
+            var text = new string(chars).Replace(',', '.');
+            return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+                ? parsed
+                : (double?)null;
         }
 
         private static IEnumerable<(string Name, object Value)> ReadMembers(object instance)

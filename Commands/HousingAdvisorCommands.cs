@@ -82,13 +82,13 @@ namespace EcoHousingAdvisor.Commands
         }
 
         [ChatSubCommand("HousingAdvisor", "List rooms from your active residence.", "harooms")]
-        public static void Rooms(User user)
+        public static void HaRooms(User user)
         {
             Send(user, new AdvisorTextRenderer().RenderRooms(HousingAdvisorRuntime.GetActiveResidenceProperty(user)));
         }
 
         [ChatSubCommand("HousingAdvisor", "Show furniture details for one active residence room type.", "haroom")]
-        public static void Room(User user, string roomType)
+        public static void HaRoom(User user, string roomType)
         {
             Send(user, new AdvisorTextRenderer().RenderRoomDetails(HousingAdvisorRuntime.GetActiveResidenceProperty(user), roomType));
         }

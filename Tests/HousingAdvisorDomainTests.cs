@@ -599,7 +599,7 @@ public static class HousingAdvisorDomainTests
         var roomOutput = renderer.RenderRoomDetails(snapshot, "Bedroom");
 
         AssertContains("Total Eco: 2.5 XP/day", roomsOutput);
-        AssertContains("types: Bed x1", roomsOutput);
+        AssertContains("furniture types: Bed x1", roomsOutput);
         AssertContains("Stump Bed", roomOutput);
         AssertContains("Next Bed: duplicate multiplier 0.4, existing x1.", roomOutput);
     }

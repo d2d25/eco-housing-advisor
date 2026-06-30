@@ -113,12 +113,10 @@ namespace EcoHousingAdvisor.Presentation
                 return string.Join(Environment.NewLine, lines);
             }
 
-            var roomSum = snapshot.Rooms.Sum(room => room.Value ?? 0);
             lines.Add(string.Format(
                 CultureInfo.InvariantCulture,
-                "Total Eco: {0} XP/day. Rooms sum: {1} XP/day.",
-                FormatNullable(snapshot.TotalValue),
-                HousingFurnitureFormatter.FormatBaseValue(roomSum)));
+                "Total Eco: {0} XP/day.",
+                FormatNullable(snapshot.TotalValue)));
 
             foreach (var room in snapshot.Rooms.OrderBy(room => room.Category, StringComparer.OrdinalIgnoreCase).ThenBy(room => room.RoomName, StringComparer.OrdinalIgnoreCase))
             {
@@ -131,7 +129,11 @@ namespace EcoHousingAdvisor.Presentation
                     FormatNullable(room.Value),
                     room.Objects.Count));
 
-                lines.Add("  types: " + room.FormatKnownExistingTypes());
+                lines.Add("  furniture types: " + room.FormatKnownExistingTypes());
+                if (room.Objects.Count == 0 && (room.Value ?? 0) > 0)
+                {
+                    lines.Add("  note: Eco gives XP for this room, but furniture objects were not readable yet.");
+                }
             }
 
             foreach (var warning in snapshot.Warnings)
