@@ -40,6 +40,7 @@ public static class HousingAdvisorDomainTests
         AppliesSupportCategoryCap();
         AppliesBathroomPropertyCap();
         CountsPrimaryRoomGainUnlockingBathroomCap();
+        AppliesDuplicateRoomPenaltyToAdviceDelta();
         PreservesNativeLinkTargetsForRichTooltips();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
@@ -791,6 +792,49 @@ public static class HousingAdvisorDomainTests
         var bedroomAdvice = advice.Rooms.Single(room => string.Equals(room.Room.Category, "Bedroom", StringComparison.OrdinalIgnoreCase));
 
         AssertEqual(1.76, Math.Round(bedroomAdvice.Additions[0].EstimatedGain, 2), "bedroom gain should also unlock room and bathroom caps");
+    }
+
+    private static void AppliesDuplicateRoomPenaltyToAdviceDelta()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            5.5,
+            1,
+            1,
+            [
+                new HousingPropertyRoomValue(
+                    "Bedroom A",
+                    "Bedroom",
+                    5.25,
+                    2,
+                    new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Bed"] = 2 },
+                    new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["Bedroom"] = 3.5,
+                        ["Decoration"] = 3,
+                    }),
+                new HousingPropertyRoomValue(
+                    "Bedroom B",
+                    "Bedroom",
+                    0.25,
+                    2,
+                    new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Bed"] = 1 },
+                    new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["Bedroom"] = 2.5,
+                    }),
+            ],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Participation Trophy", "Decoration", 3, "Trophy", 0.5),
+        ]);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 2, 1);
+        var reducedBedroomAdvice = advice.Rooms.Single(room => string.Equals(room.Room.RoomName, "Bedroom B", StringComparison.OrdinalIgnoreCase));
+
+        AssertEqual(0.12, Math.Round(reducedBedroomAdvice.Additions[0].EstimatedGain, 2), "duplicate bedroom should keep only ten percent of added room value");
     }
 
     private static void PreservesNativeLinkTargetsForRichTooltips()
