@@ -772,7 +772,12 @@ public static class HousingAdvisorDomainTests
                     "Bedroom",
                     3.75,
                     1,
-                    new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Bed"] = 1 }),
+                    new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Bed"] = 1 },
+                    new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["Bedroom"] = 2.5,
+                        ["Decoration"] = 3,
+                    }),
                 new HousingPropertyRoomValue("Bathroom", "Bathroom", 1.5, 1),
             ],
             [],
@@ -785,7 +790,7 @@ public static class HousingAdvisorDomainTests
         var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 2, 1);
         var bedroomAdvice = advice.Rooms.Single(room => string.Equals(room.Room.Category, "Bedroom", StringComparison.OrdinalIgnoreCase));
 
-        AssertEqual(1.26, Math.Round(bedroomAdvice.Additions[0].EstimatedGain, 2), "bedroom gain should also unlock bathroom cap");
+        AssertEqual(1.76, Math.Round(bedroomAdvice.Additions[0].EstimatedGain, 2), "bedroom gain should also unlock room and bathroom caps");
     }
 
     private static void PreservesNativeLinkTargetsForRichTooltips()

@@ -178,7 +178,7 @@ namespace EcoHousingAdvisor.Domain
             var cap = HousingTierCaps.ForTier(room.Tier);
             if (cap == null || room.Value == null)
             {
-                var uncappedTotalGain = EstimatePropertyDelta(property, room, localRoomGain);
+                var uncappedTotalGain = EstimatePropertyDelta(property, room, category, localRoomGain);
                 return new HousingRoomAdditionAdvice(category, group, uncappedTotalGain, "cap unknown", existingTypeCount, duplicateFactor, availability);
             }
 
@@ -205,7 +205,7 @@ namespace EcoHousingAdvisor.Domain
             return new HousingRoomAdditionAdvice(
                 category,
                 group,
-                EstimatePropertyDelta(property, room, roomGain),
+                EstimatePropertyDelta(property, room, category, roomGain),
                 capNote,
                 existingTypeCount,
                 duplicateFactor,
@@ -242,7 +242,11 @@ namespace EcoHousingAdvisor.Domain
             return Math.Min(candidateValue, Math.Max(0, cap - existingSupport));
         }
 
-        private static double EstimatePropertyDelta(HousingPropertyValueSnapshot property, HousingPropertyRoomValue targetRoom, double roomGain)
+        private static double EstimatePropertyDelta(
+            HousingPropertyValueSnapshot property,
+            HousingPropertyRoomValue targetRoom,
+            string category,
+            double roomGain)
         {
             if (roomGain <= 0)
             {
@@ -250,7 +254,7 @@ namespace EcoHousingAdvisor.Domain
             }
 
             var before = EstimateFinalPropertyValue(property.Rooms);
-            var afterRooms = RoomsWithAdditionalValue(property, targetRoom, roomGain);
+            var afterRooms = RoomsWithAdditionalValue(property, targetRoom, category, roomGain);
             var after = EstimateFinalPropertyValue(afterRooms);
             return Math.Round(Math.Max(0, after - before), 6);
         }
@@ -258,6 +262,7 @@ namespace EcoHousingAdvisor.Domain
         private static IReadOnlyList<HousingPropertyRoomValue> RoomsWithAdditionalValue(
             HousingPropertyValueSnapshot property,
             HousingPropertyRoomValue targetRoom,
+            string category,
             double roomGain)
         {
             var updated = false;
@@ -266,7 +271,7 @@ namespace EcoHousingAdvisor.Domain
             {
                 if (ReferenceEquals(room, targetRoom))
                 {
-                    rooms.Add(CopyRoomWithValue(room, (room.Value ?? 0) + roomGain));
+                    rooms.Add(CopyRoomWithAdditionalCategoryValue(room, category, roomGain));
                     updated = true;
                 }
                 else
@@ -277,13 +282,33 @@ namespace EcoHousingAdvisor.Domain
 
             if (!updated)
             {
-                rooms.Add(CopyRoomWithValue(targetRoom, (targetRoom.Value ?? 0) + roomGain));
+                rooms.Add(CopyRoomWithAdditionalCategoryValue(targetRoom, category, roomGain));
             }
 
             return rooms;
         }
 
-        private static HousingPropertyRoomValue CopyRoomWithValue(HousingPropertyRoomValue room, double value)
+        private static HousingPropertyRoomValue CopyRoomWithAdditionalCategoryValue(
+            HousingPropertyRoomValue room,
+            string category,
+            double roomGain)
+        {
+            if (room.CategoryValues.Count == 0 || string.IsNullOrWhiteSpace(category))
+            {
+                return CopyRoomWithValueAndCategories(room, (room.Value ?? 0) + roomGain, room.CategoryValues);
+            }
+
+            var values = new Dictionary<string, double>(room.CategoryValues, StringComparer.OrdinalIgnoreCase);
+            values[category] = values.TryGetValue(category, out var existing)
+                ? existing + roomGain
+                : roomGain;
+            return CopyRoomWithValueAndCategories(room, EstimateRoomFinalValue(room, values), values);
+        }
+
+        private static HousingPropertyRoomValue CopyRoomWithValueAndCategories(
+            HousingPropertyRoomValue room,
+            double value,
+            IReadOnlyDictionary<string, double> categoryValues)
         {
             return new HousingPropertyRoomValue(
                 room.RoomName,
@@ -291,7 +316,7 @@ namespace EcoHousingAdvisor.Domain
                 value,
                 room.Tier,
                 room.ExistingTypeCounts,
-                room.CategoryValues,
+                categoryValues,
                 room.Objects,
                 room.EcoDescription,
                 room.RoomCategoryLink);
@@ -301,19 +326,49 @@ namespace EcoHousingAdvisor.Domain
         {
             var uncappedTotal = rooms
                 .Where(room => HousingRoomRules.PropertyCategoryCapPercent(room.Category) <= 0)
-                .Sum(room => room.Value ?? 0);
+                .Sum(EstimateRoomFinalValue);
             var cappedTotal = rooms
                 .Where(room => HousingRoomRules.PropertyCategoryCapPercent(room.Category) > 0)
                 .GroupBy(room => HousingRoomRules.NormalizeRoomName(room.Category ?? room.RoomName), StringComparer.OrdinalIgnoreCase)
                 .Sum(group =>
                 {
                     var category = group.Key;
-                    var rawValue = group.Sum(room => room.Value ?? 0);
+                    var rawValue = group.Sum(EstimateRoomFinalValue);
                     var cap = HousingRoomRules.PropertyCategoryCapPercent(category);
                     return Math.Min(rawValue, cap * uncappedTotal);
                 });
 
             return uncappedTotal + cappedTotal;
+        }
+
+        private static double EstimateRoomFinalValue(HousingPropertyRoomValue room)
+        {
+            return EstimateRoomFinalValue(room, room.CategoryValues);
+        }
+
+        private static double EstimateRoomFinalValue(
+            HousingPropertyRoomValue room,
+            IReadOnlyDictionary<string, double> categoryValues)
+        {
+            if (categoryValues == null || categoryValues.Count == 0)
+            {
+                return room.Value ?? 0;
+            }
+
+            var primary = HousingRoomRules.NormalizeRoomName(room.Category ?? room.RoomName);
+            var primaryValue = categoryValues.TryGetValue(primary, out var rawPrimary)
+                ? rawPrimary
+                : room.Value ?? 0;
+            var supportValue = categoryValues
+                .Where(entry => !string.Equals(HousingRoomRules.NormalizeRoomName(entry.Key), primary, StringComparison.OrdinalIgnoreCase))
+                .Sum(entry =>
+                {
+                    var supportCategory = HousingRoomRules.NormalizeRoomName(entry.Key);
+                    var cap = HousingRoomRules.SupportCapPercent(supportCategory, primary) * primaryValue;
+                    return Math.Min(entry.Value, cap);
+                });
+
+            return primaryValue + supportValue;
         }
 
     }
