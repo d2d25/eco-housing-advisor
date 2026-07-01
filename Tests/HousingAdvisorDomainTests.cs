@@ -41,6 +41,7 @@ public static class HousingAdvisorDomainTests
         AppliesBathroomPropertyCap();
         CountsPrimaryRoomGainUnlockingBathroomCap();
         AppliesDuplicateRoomPenaltyToAdviceDelta();
+        CapsDecorationSupportFromEcoCategoryVariants();
         PreservesNativeLinkTargetsForRichTooltips();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
@@ -835,6 +836,34 @@ public static class HousingAdvisorDomainTests
         var reducedBedroomAdvice = advice.Rooms.Single(room => string.Equals(room.Room.RoomName, "Bedroom B", StringComparison.OrdinalIgnoreCase));
 
         AssertEqual(0.12, Math.Round(reducedBedroomAdvice.Additions[0].EstimatedGain, 2), "duplicate bedroom should keep only ten percent of added room value");
+    }
+
+    private static void CapsDecorationSupportFromEcoCategoryVariants()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            3.5,
+            1,
+            1,
+            [
+                new HousingPropertyRoomValue(
+                    "Bedroom",
+                    "Bedroom",
+                    3.5,
+                    2,
+                    new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Bed"] = 2 }),
+            ],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Participation Trophy", "Decoration support", 3, "Trophy", 0.5),
+        ]);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 1, 1);
+
+        AssertEqual("Decoration", groups[0].Category, "eco decoration support category normalized");
+        AssertEqual(1.75, Math.Round(advice.Rooms[0].Additions[0].EstimatedGain, 2), "decoration support capped at half bedroom value");
     }
 
     private static void PreservesNativeLinkTargetsForRichTooltips()

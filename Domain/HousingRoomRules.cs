@@ -113,6 +113,9 @@ namespace EcoHousingAdvisor.Domain
 
         public static double SupportCapPercent(string supportCategory, string primaryRoomCategory)
         {
+            supportCategory = NormalizeRoomName(supportCategory);
+            primaryRoomCategory = NormalizeRoomName(primaryRoomCategory);
+
             if (string.Equals(supportCategory, "Seating", StringComparison.OrdinalIgnoreCase))
             {
                 return 0.3;
@@ -138,7 +141,7 @@ namespace EcoHousingAdvisor.Domain
             if (string.Equals(supportCategory, "Living Room", StringComparison.OrdinalIgnoreCase)
                 && string.Equals(primaryRoomCategory, "Bedroom", StringComparison.OrdinalIgnoreCase))
             {
-                return 1;
+                return 0.25;
             }
 
             return 1;
@@ -195,6 +198,10 @@ namespace EcoHousingAdvisor.Domain
             if (cleaned.IndexOf("Living Room", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("LivingRoom", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Salon", StringComparison.OrdinalIgnoreCase) >= 0) return "Living Room";
             if (cleaned.IndexOf("Outdoor", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Exterieur", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Extérieur", StringComparison.OrdinalIgnoreCase) >= 0) return "Outdoor";
             if (cleaned.IndexOf("Cultural", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Culture", StringComparison.OrdinalIgnoreCase) >= 0) return "Cultural";
+            if (cleaned.IndexOf("Seating", StringComparison.OrdinalIgnoreCase) >= 0) return "Seating";
+            if (cleaned.IndexOf("Decoration", StringComparison.OrdinalIgnoreCase) >= 0) return "Decoration";
+            if (cleaned.IndexOf("Lighting", StringComparison.OrdinalIgnoreCase) >= 0) return "Lighting";
+            if (cleaned.IndexOf("Industrial", StringComparison.OrdinalIgnoreCase) >= 0) return "Industrial";
             return cleaned;
         }
 

@@ -30,7 +30,9 @@ namespace EcoHousingAdvisor.Domain
 
         private static string Normalize(string value, string fallback)
         {
-            return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+            return string.IsNullOrWhiteSpace(value)
+                ? fallback
+                : HousingRoomRules.NormalizeRoomName(value.Trim()) ?? fallback;
         }
     }
 }
