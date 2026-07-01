@@ -29,6 +29,7 @@ public static class HousingAdvisorDomainTests
         SuggestsPropertyAdditionsForWeakRooms();
         SuggestsStarterBedroomWhenPropertyHasNoRooms();
         SuggestsMissingBathroomWhenBedroomExists();
+        HidesStarterBathroomUntilPrimaryRoomsHaveValue();
         AppliesDuplicatePenaltyFromMappedRoomTypes();
         ReadsFakeRoomFurnitureTypeLimits();
         ReadsFakePropertyValueRoomsObjectsAndDescriptions();
@@ -473,6 +474,31 @@ public static class HousingAdvisorDomainTests
         AssertEqual(1, advice.NewRooms.Count, "missing bathroom room count");
         AssertEqual("Bathroom", advice.NewRooms[0].Room.Category, "missing room category");
         AssertContains("Latrine", advice.NewRooms[0].Additions[0].Group.Items[0].DisplayName);
+        AssertEqual(0.33, Math.Round(advice.NewRooms[0].Additions[0].EstimatedGain, 2), "missing bathroom property cap");
+    }
+
+    private static void HidesStarterBathroomUntilPrimaryRoomsHaveValue()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            0,
+            1,
+            1,
+            [],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Stump Bed", "Bedroom", 2.5, "Bed", 0.4),
+            Item("Stump Latrine", "Bathroom", 1.5, "Toilet", 0.4),
+        ]);
+        var availability = AvailabilityFor(groups);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, availability, 2, 2);
+
+        AssertEqual(1, advice.NewRooms.Count, "starter advice should only include primary rooms with final gain");
+        AssertEqual("Bedroom", advice.NewRooms[0].Room.Category, "starter advice first useful room");
+        AssertNotContains("Bathroom", string.Join(", ", advice.NewRooms.Select(room => room.Room.Category)));
     }
 
     private static void AppliesDuplicatePenaltyFromMappedRoomTypes()

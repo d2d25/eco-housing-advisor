@@ -175,6 +175,7 @@ namespace EcoHousingAdvisor.Domain
             var existingTypeCount = room.CountExistingType(group.TypeForRoomLimit);
             var duplicateFactor = DuplicateFactor(group, existingTypeCount);
             var duplicateAdjustedBase = ApplySupportCap(room, category, group.BaseValue * duplicateFactor);
+            duplicateAdjustedBase = ApplyPropertyCategoryCap(property, room, duplicateAdjustedBase);
             var cap = HousingTierCaps.ForTier(room.Tier);
             if (cap == null || room.Value == null)
             {
