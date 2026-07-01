@@ -93,6 +93,14 @@ namespace EcoHousingAdvisor.Commands
             Send(user, new AdvisorTextRenderer().RenderRoomDetails(HousingAdvisorRuntime.GetActiveResidenceProperty(user), roomType));
         }
 
+        [ChatSubCommand("HousingAdvisor", "Show item category and room cap diagnostics.", "haitem", ChatAuthorizationLevel.Admin)]
+        public static void HaItem(User user, string text)
+        {
+            var furniture = HousingAdvisorRuntime.GetSnapshot(false);
+            var property = HousingAdvisorRuntime.GetActiveResidenceProperty(user);
+            Send(user, new AdvisorTextRenderer().RenderItemDiagnostics(property, furniture.Groups, text));
+        }
+
         [ChatSubCommand("HousingAdvisor", "Show starter whole-property room setup advice.", "hastarter", ChatAuthorizationLevel.Admin)]
         public static void HaStarter(User user)
         {

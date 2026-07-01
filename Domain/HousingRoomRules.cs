@@ -199,8 +199,8 @@ namespace EcoHousingAdvisor.Domain
             if (cleaned.IndexOf("Outdoor", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Exterieur", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Extérieur", StringComparison.OrdinalIgnoreCase) >= 0) return "Outdoor";
             if (cleaned.IndexOf("Cultural", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Culture", StringComparison.OrdinalIgnoreCase) >= 0) return "Cultural";
             if (cleaned.IndexOf("Seating", StringComparison.OrdinalIgnoreCase) >= 0) return "Seating";
-            if (cleaned.IndexOf("Decoration", StringComparison.OrdinalIgnoreCase) >= 0) return "Decoration";
-            if (cleaned.IndexOf("Lighting", StringComparison.OrdinalIgnoreCase) >= 0) return "Lighting";
+            if (cleaned.IndexOf("Decoration", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Decor", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Décor", StringComparison.OrdinalIgnoreCase) >= 0) return "Decoration";
+            if (cleaned.IndexOf("Lighting", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Light", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Éclairage", StringComparison.OrdinalIgnoreCase) >= 0 || cleaned.IndexOf("Eclairage", StringComparison.OrdinalIgnoreCase) >= 0) return "Lighting";
             if (cleaned.IndexOf("Industrial", StringComparison.OrdinalIgnoreCase) >= 0) return "Industrial";
             return cleaned;
         }

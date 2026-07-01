@@ -91,6 +91,7 @@ namespace EcoHousingAdvisor.Presentation
                 "/housingadvisor harefresh - admin rebuild furniture cache",
                 "/housingadvisor harooms - admin active residence room list",
                 "/housingadvisor haroom Bedroom - admin room-type detail",
+                "/housingadvisor haitem trophy - admin item/category cap diagnostic",
                 "/housingadvisor uistatus - admin tooltip status",
                 "/housingadvisor hahelp - show this admin help",
             });
@@ -140,6 +141,70 @@ namespace EcoHousingAdvisor.Presentation
             foreach (var warning in snapshot.Warnings)
             {
                 lines.Add("Note: " + warning);
+            }
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        public string RenderItemDiagnostics(
+            HousingPropertyValueSnapshot snapshot,
+            IReadOnlyList<HousingFurnitureGroup> groups,
+            string text)
+        {
+            var matches = (groups ?? new HousingFurnitureGroup[0])
+                .Where(group => Contains(group.Category, text)
+                    || Contains(group.TypeForRoomLimit, text)
+                    || group.Items.Any(item => Contains(item.DisplayName, text) || Contains(item.ItemTypeName, text)))
+                .OrderBy(group => group.Category, StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(group => group.BaseValue)
+                .Take(8)
+                .ToArray();
+
+            if (matches.Length == 0)
+            {
+                return "Eco Housing Advisor: no item/group diagnostic match for '" + text + "'.";
+            }
+
+            var lines = new List<string>
+            {
+                "Eco Housing Advisor item diagnostics for '" + text + "':",
+            };
+
+            foreach (var group in matches)
+            {
+                var itemNames = string.Join(", ", group.Items.Select(item => item.DisplayName).Take(4));
+                var category = HousingRoomRules.NormalizeRoomName(group.Category);
+                lines.Add(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "- {0}: raw category {1}, normalized {2}, base {3}, type {4}, duplicate {5}",
+                    itemNames,
+                    group.Category,
+                    category,
+                    HousingFurnitureFormatter.FormatBaseValue(group.BaseValue),
+                    group.TypeForRoomLimit,
+                    HousingFurnitureFormatter.FormatMultiplier(group.DiminishingReturnMultiplier)));
+
+                foreach (var room in snapshot.Rooms.Take(8))
+                {
+                    var primary = HousingRoomRules.NormalizeRoomName(room.Category ?? room.RoomName);
+                    var primaryValue = room.CategoryValue(primary);
+                    var existingSupport = room.CategoryValue(category);
+                    var capPercent = HousingRoomRules.SupportCapPercent(category, primary);
+                    var remaining = string.Equals(category, primary, StringComparison.OrdinalIgnoreCase)
+                        ? group.BaseValue
+                        : Math.Max(0, capPercent * primaryValue - existingSupport);
+                    lines.Add(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "  room {0}/{1}: primary {2}={3}, existing {4}={5}, cap {6}, remaining {7}",
+                        room.RoomName,
+                        room.Category,
+                        primary,
+                        FormatNullable(primaryValue),
+                        category,
+                        FormatNullable(existingSupport),
+                        HousingFurnitureFormatter.FormatMultiplier(capPercent),
+                        HousingFurnitureFormatter.FormatBaseValue(remaining)));
+                }
             }
 
             return string.Join(Environment.NewLine, lines);
@@ -600,6 +665,16 @@ namespace EcoHousingAdvisor.Presentation
             }
 
             return "Availability unknown";
+        }
+
+        private static bool Contains(string value, string text)
+        {
+            if (string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(text))
+            {
+                return false;
+            }
+
+            return value.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static string FormatDuplicateNote(HousingRoomAdditionAdvice addition)
