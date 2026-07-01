@@ -184,6 +184,23 @@ namespace EcoHousingAdvisor.Domain
             return new[] { "Bedroom", "Bathroom", "Kitchen", "Living Room" };
         }
 
+        public static IReadOnlyList<HousingRoomRuleSpec> ExpectedRuleSpecs()
+        {
+            return new[]
+            {
+                new HousingRoomRuleSpec("Living Room", true, false, false, 0.25, 0, new[] { "Seating", "Cultural" }),
+                new HousingRoomRuleSpec("Bedroom", true, false, false, 1, 0, new[] { "Living Room", "Seating" }),
+                new HousingRoomRuleSpec("Kitchen", true, false, false, 1, 0, new[] { "Seating" }),
+                new HousingRoomRuleSpec("Bathroom", true, false, false, 1, 0.33, new[] { "Seating" }),
+                new HousingRoomRuleSpec("Outdoor", true, false, false, 1, 1, new[] { "Seating", "Cultural" }),
+                new HousingRoomRuleSpec("Cultural", true, false, false, 0.2, 0, new[] { "Seating" }),
+                new HousingRoomRuleSpec("Industrial", true, false, true, 1, 0, new string[0]),
+                new HousingRoomRuleSpec("Seating", false, false, false, 0.3, 0, new string[0]),
+                new HousingRoomRuleSpec("Decoration", false, true, false, 0.5, 0, new string[0]),
+                new HousingRoomRuleSpec("Lighting", false, true, false, 0.5, 0, new string[0]),
+            };
+        }
+
         public static string NormalizeRoomName(string roomName)
         {
             if (string.IsNullOrWhiteSpace(roomName))

@@ -20,6 +20,7 @@
     <Compile Remove="UI\**\*.cs" />
     <Compile Remove="EcoRuntime\EcoAvailabilityReader.cs" />
     <Compile Remove="EcoRuntime\EcoFurnitureReader.cs" />
+    <Compile Remove="EcoRuntime\EcoHousingRuleAudit.cs" />
     <Compile Remove="EcoRuntime\HousingAdvisorPlugin.cs" />
     <Compile Remove="EcoRuntime\EcoResidenceReader.cs" />
     <Compile Remove="EcoRuntime\HousingAdvisorRuntime.cs" />

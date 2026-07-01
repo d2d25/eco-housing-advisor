@@ -92,6 +92,7 @@ namespace EcoHousingAdvisor.Presentation
                 "/housingadvisor harooms - admin active residence room list",
                 "/housingadvisor haroom Bedroom - admin room-type detail",
                 "/housingadvisor haitem trophy - admin item/category cap diagnostic",
+                "/housingadvisor haarules - admin Eco housing rule drift audit",
                 "/housingadvisor uistatus - admin tooltip status",
                 "/housingadvisor hahelp - show this admin help",
             });

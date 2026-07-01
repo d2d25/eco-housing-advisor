@@ -101,6 +101,12 @@ namespace EcoHousingAdvisor.Commands
             Send(user, new AdvisorTextRenderer().RenderItemDiagnostics(property, furniture.Groups, text));
         }
 
+        [ChatSubCommand("HousingAdvisor", "Audit advisor housing rules against Eco runtime/source rules.", "haarules", ChatAuthorizationLevel.Admin)]
+        public static void HaRules(User user)
+        {
+            Send(user, new EcoHousingRuleAudit().Run());
+        }
+
         [ChatSubCommand("HousingAdvisor", "Show starter whole-property room setup advice.", "hastarter", ChatAuthorizationLevel.Admin)]
         public static void HaStarter(User user)
         {
