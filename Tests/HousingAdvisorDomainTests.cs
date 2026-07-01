@@ -39,6 +39,7 @@ public static class HousingAdvisorDomainTests
         DoesNotApplyFinalPropertyMultiplierToDelta();
         AppliesSupportCategoryCap();
         AppliesBathroomPropertyCap();
+        CountsPrimaryRoomGainUnlockingBathroomCap();
         PreservesNativeLinkTargetsForRichTooltips();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
@@ -756,6 +757,35 @@ public static class HousingAdvisorDomainTests
         var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 2, 1);
 
         AssertEqual(0.3, Math.Round(advice.Rooms[0].Additions[0].EstimatedGain, 2), "bathroom cap remaining");
+    }
+
+    private static void CountsPrimaryRoomGainUnlockingBathroomCap()
+    {
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            4.99,
+            1,
+            1,
+            [
+                new HousingPropertyRoomValue(
+                    "Bedroom",
+                    "Bedroom",
+                    3.75,
+                    1,
+                    new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Bed"] = 1 }),
+                new HousingPropertyRoomValue("Bathroom", "Bathroom", 1.5, 1),
+            ],
+            [],
+            DateTimeOffset.UtcNow);
+        var groups = new HousingFurnitureGrouper().GroupFurniture(
+        [
+            Item("Stump Bed", "Bedroom", 2.5, "Bed", 0.4),
+        ]);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, AvailabilityFor(groups), 2, 1);
+        var bedroomAdvice = advice.Rooms.Single(room => string.Equals(room.Room.Category, "Bedroom", StringComparison.OrdinalIgnoreCase));
+
+        AssertEqual(1.26, Math.Round(bedroomAdvice.Additions[0].EstimatedGain, 2), "bedroom gain should also unlock bathroom cap");
     }
 
     private static void PreservesNativeLinkTargetsForRichTooltips()

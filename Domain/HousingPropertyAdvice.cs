@@ -174,39 +174,39 @@ namespace EcoHousingAdvisor.Domain
         {
             var existingTypeCount = room.CountExistingType(group.TypeForRoomLimit);
             var duplicateFactor = DuplicateFactor(group, existingTypeCount);
-            var duplicateAdjustedBase = ApplySupportCap(room, category, group.BaseValue * duplicateFactor);
-            duplicateAdjustedBase = ApplyPropertyCategoryCap(property, room, duplicateAdjustedBase);
+            var localRoomGain = ApplySupportCap(room, category, group.BaseValue * duplicateFactor);
             var cap = HousingTierCaps.ForTier(room.Tier);
             if (cap == null || room.Value == null)
             {
-                return new HousingRoomAdditionAdvice(category, group, duplicateAdjustedBase, "cap unknown", existingTypeCount, duplicateFactor, availability);
+                var uncappedTotalGain = EstimatePropertyDelta(property, room, localRoomGain);
+                return new HousingRoomAdditionAdvice(category, group, uncappedTotalGain, "cap unknown", existingTypeCount, duplicateFactor, availability);
             }
 
             var remainingSoft = cap.SoftCap - room.Value.Value;
             var remainingHard = cap.HardCap - room.Value.Value;
-            remainingHard = ApplyPropertyCategoryCap(property, room, remainingHard);
             if (remainingHard <= 0)
             {
                 return new HousingRoomAdditionAdvice(category, group, 0, "hard cap reached", existingTypeCount, duplicateFactor, availability);
             }
 
+            double roomGain;
+            string capNote;
             if (remainingSoft <= 0)
             {
-                return new HousingRoomAdditionAdvice(
-                    category,
-                    group,
-                    Math.Min(duplicateAdjustedBase * cap.DiminishingReturnPercent, remainingHard),
-                    "past soft cap",
-                    existingTypeCount,
-                    duplicateFactor,
-                    availability);
+                roomGain = Math.Min(localRoomGain * cap.DiminishingReturnPercent, remainingHard);
+                capNote = "past soft cap";
+            }
+            else
+            {
+                roomGain = Math.Min(localRoomGain, Math.Min(remainingSoft, remainingHard));
+                capNote = "before soft cap";
             }
 
             return new HousingRoomAdditionAdvice(
                 category,
                 group,
-                Math.Min(duplicateAdjustedBase, Math.Min(remainingSoft, remainingHard)),
-                "before soft cap",
+                EstimatePropertyDelta(property, room, roomGain),
+                capNote,
                 existingTypeCount,
                 duplicateFactor,
                 availability);
@@ -242,22 +242,79 @@ namespace EcoHousingAdvisor.Domain
             return Math.Min(candidateValue, Math.Max(0, cap - existingSupport));
         }
 
-        private static double ApplyPropertyCategoryCap(HousingPropertyValueSnapshot property, HousingPropertyRoomValue room, double remainingHard)
+        private static double EstimatePropertyDelta(HousingPropertyValueSnapshot property, HousingPropertyRoomValue targetRoom, double roomGain)
         {
-            var roomCategory = HousingRoomRules.NormalizeRoomName(room.Category ?? room.RoomName);
-            var capPercent = HousingRoomRules.PropertyCategoryCapPercent(roomCategory);
-            if (capPercent <= 0)
+            if (roomGain <= 0)
             {
-                return remainingHard;
+                return 0;
             }
 
-            var uncappedTotal = property.Rooms
-                .Where(other => HousingRoomRules.PropertyCategoryCapPercent(other.Category) <= 0)
-                .Sum(other => other.Value ?? 0);
-            var currentCategoryTotal = property.Rooms
-                .Where(other => string.Equals(HousingRoomRules.NormalizeRoomName(other.Category), roomCategory, StringComparison.OrdinalIgnoreCase))
-                .Sum(other => other.Value ?? 0);
-            return Math.Min(remainingHard, Math.Max(0, capPercent * uncappedTotal - currentCategoryTotal));
+            var before = EstimateFinalPropertyValue(property.Rooms);
+            var afterRooms = RoomsWithAdditionalValue(property, targetRoom, roomGain);
+            var after = EstimateFinalPropertyValue(afterRooms);
+            return Math.Round(Math.Max(0, after - before), 6);
         }
+
+        private static IReadOnlyList<HousingPropertyRoomValue> RoomsWithAdditionalValue(
+            HousingPropertyValueSnapshot property,
+            HousingPropertyRoomValue targetRoom,
+            double roomGain)
+        {
+            var updated = false;
+            var rooms = new List<HousingPropertyRoomValue>(property.Rooms.Count + 1);
+            foreach (var room in property.Rooms)
+            {
+                if (ReferenceEquals(room, targetRoom))
+                {
+                    rooms.Add(CopyRoomWithValue(room, (room.Value ?? 0) + roomGain));
+                    updated = true;
+                }
+                else
+                {
+                    rooms.Add(room);
+                }
+            }
+
+            if (!updated)
+            {
+                rooms.Add(CopyRoomWithValue(targetRoom, (targetRoom.Value ?? 0) + roomGain));
+            }
+
+            return rooms;
+        }
+
+        private static HousingPropertyRoomValue CopyRoomWithValue(HousingPropertyRoomValue room, double value)
+        {
+            return new HousingPropertyRoomValue(
+                room.RoomName,
+                room.Category,
+                value,
+                room.Tier,
+                room.ExistingTypeCounts,
+                room.CategoryValues,
+                room.Objects,
+                room.EcoDescription,
+                room.RoomCategoryLink);
+        }
+
+        private static double EstimateFinalPropertyValue(IReadOnlyList<HousingPropertyRoomValue> rooms)
+        {
+            var uncappedTotal = rooms
+                .Where(room => HousingRoomRules.PropertyCategoryCapPercent(room.Category) <= 0)
+                .Sum(room => room.Value ?? 0);
+            var cappedTotal = rooms
+                .Where(room => HousingRoomRules.PropertyCategoryCapPercent(room.Category) > 0)
+                .GroupBy(room => HousingRoomRules.NormalizeRoomName(room.Category ?? room.RoomName), StringComparer.OrdinalIgnoreCase)
+                .Sum(group =>
+                {
+                    var category = group.Key;
+                    var rawValue = group.Sum(room => room.Value ?? 0);
+                    var cap = HousingRoomRules.PropertyCategoryCapPercent(category);
+                    return Math.Min(rawValue, cap * uncappedTotal);
+                });
+
+            return uncappedTotal + cappedTotal;
+        }
+
     }
 }
