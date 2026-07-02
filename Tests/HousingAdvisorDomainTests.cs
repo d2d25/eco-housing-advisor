@@ -42,6 +42,7 @@ public static class HousingAdvisorDomainTests
         CountsPrimaryRoomGainUnlockingBathroomCap();
         AppliesDuplicateRoomPenaltyToAdviceDelta();
         CapsDecorationSupportFromEcoCategoryVariants();
+        PrefersOwnedItemVariantInsideFurnitureGroup();
         PreservesNativeLinkTargetsForRichTooltips();
         Console.WriteLine("EcoHousingAdvisor fake domain tests passed.");
     }
@@ -864,6 +865,48 @@ public static class HousingAdvisorDomainTests
 
         AssertEqual("Decoration", groups[0].Category, "eco decoration support category normalized");
         AssertEqual(1.75, Math.Round(advice.Rooms[0].Additions[0].EstimatedGain, 2), "decoration support capped at half bedroom value");
+    }
+
+    private static void PrefersOwnedItemVariantInsideFurnitureGroup()
+    {
+        var unavailable = Item("A Placeholder Chair", "Seating", 1.7, "Chair", 0.6);
+        var owned = Item("Composite Ceiba Chair", "Seating", 1.7, "Chair", 0.6);
+        var groups = new HousingFurnitureGrouper().GroupFurniture([unavailable, owned]);
+        var availability = new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>
+        {
+            [owned.ItemTypeName] = new HousingItemAvailability(
+                owned.ItemTypeName,
+                [new HousingOwnedItemLocation("Your inventory", true, 1)],
+                [],
+                []),
+        });
+        var property = new HousingPropertyValueSnapshot(
+            "FakePropertyValue",
+            5,
+            1,
+            1,
+            [
+                new HousingPropertyRoomValue(
+                    "Bedroom",
+                    "Bedroom",
+                    5,
+                    2,
+                    new Dictionary<string, int>(),
+                    new Dictionary<string, double> { ["Bedroom"] = 5 },
+                    []),
+            ],
+            [],
+            DateTimeOffset.UtcNow);
+
+        var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, availability, 1, 3);
+
+        AssertEqual(1, advice.Rooms[0].Additions.Count, "owned variant advice count");
+        AssertEqual("Composite Ceiba Chair", advice.Rooms[0].Additions[0].Group.Items[0].DisplayName, "owned variant selected");
+        AssertEqual(1, advice.Rooms[0].Additions[0].Availability.OwnedLocations.Count, "owned variant availability");
+
+        var categoryResult = new HousingSuggestionEngine().SuggestByCategory(groups, availability, "Seating", 1, 5);
+        AssertEqual(1, categoryResult.Suggestions.Count, "owned variant category suggestion count");
+        AssertEqual("Composite Ceiba Chair", categoryResult.Suggestions[0].Group.Items[0].DisplayName, "owned variant category suggestion");
     }
 
     private static void PreservesNativeLinkTargetsForRichTooltips()

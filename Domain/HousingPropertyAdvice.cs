@@ -136,7 +136,7 @@ namespace EcoHousingAdvisor.Domain
             }
 
             return matches
-                .Select(match => BuildAdditionAdvice(property, room, room.Category, match, availability.ForItem(match.Items[0].ItemTypeName)))
+                .Select(match => BuildAdditionAdvice(property, room, room.Category, SelectAvailableGroup(match, availability), availability))
                 .Where(advice => advice != null && advice.EstimatedGain > 0 && advice.Availability.IsAvailable)
                 .OrderByDescending(advice => advice.EstimatedGain)
                 .ThenBy(advice => advice.Group.Items[0].DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -155,7 +155,7 @@ namespace EcoHousingAdvisor.Domain
             var categories = HousingRoomRules.CategoriesUsefulInRoom(room.Category ?? room.RoomName);
             return categories
                 .SelectMany(category => indexedGroups.TryGetValue(category, out var matches)
-                    ? matches.Select(match => BuildAdditionAdvice(property, room, category, match, availability.ForItem(match.Items[0].ItemTypeName)))
+                    ? matches.Select(match => BuildAdditionAdvice(property, room, category, SelectAvailableGroup(match, availability), availability))
                     : Enumerable.Empty<HousingRoomAdditionAdvice>())
                 .Where(advice => advice != null && advice.EstimatedGain > 0 && advice.Availability.IsAvailable)
                 .OrderByDescending(advice => advice.EstimatedGain)
@@ -170,8 +170,9 @@ namespace EcoHousingAdvisor.Domain
             HousingPropertyRoomValue room,
             string category,
             HousingFurnitureGroup group,
-            HousingItemAvailability availability)
+            HousingAvailabilitySnapshot availability)
         {
+            var itemAvailability = availability.ForItem(group.Items[0].ItemTypeName);
             var existingTypeCount = room.CountExistingType(group.TypeForRoomLimit);
             var duplicateFactor = DuplicateFactor(group, existingTypeCount);
             var localRoomGain = ApplySupportCap(room, category, group.BaseValue * duplicateFactor);
@@ -179,14 +180,14 @@ namespace EcoHousingAdvisor.Domain
             if (cap == null || room.Value == null)
             {
                 var uncappedTotalGain = EstimatePropertyDelta(property, room, category, localRoomGain);
-                return new HousingRoomAdditionAdvice(category, group, uncappedTotalGain, "cap unknown", existingTypeCount, duplicateFactor, availability);
+                return new HousingRoomAdditionAdvice(category, group, uncappedTotalGain, "cap unknown", existingTypeCount, duplicateFactor, itemAvailability);
             }
 
             var remainingSoft = cap.SoftCap - room.Value.Value;
             var remainingHard = cap.HardCap - room.Value.Value;
             if (remainingHard <= 0)
             {
-                return new HousingRoomAdditionAdvice(category, group, 0, "hard cap reached", existingTypeCount, duplicateFactor, availability);
+                return new HousingRoomAdditionAdvice(category, group, 0, "hard cap reached", existingTypeCount, duplicateFactor, itemAvailability);
             }
 
             double roomGain;
@@ -209,7 +210,45 @@ namespace EcoHousingAdvisor.Domain
                 capNote,
                 existingTypeCount,
                 duplicateFactor,
-                availability);
+                itemAvailability);
+        }
+
+        private static HousingFurnitureGroup SelectAvailableGroup(
+            HousingFurnitureGroup group,
+            HousingAvailabilitySnapshot availability)
+        {
+            if (group.Items.Count <= 1)
+            {
+                return group;
+            }
+
+            var orderedItems = group.Items
+                .OrderByDescending(item => AvailabilityPriority(availability.ForItem(item.ItemTypeName)))
+                .ThenBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            return new HousingFurnitureGroup(
+                group.Category,
+                group.TypeForRoomLimit,
+                group.BaseValue,
+                group.DiminishingReturnMultiplier,
+                orderedItems);
+        }
+
+        private static int AvailabilityPriority(HousingItemAvailability availability)
+        {
+            if (availability.OwnedLocations.Count > 0)
+            {
+                return 3;
+            }
+
+            if (availability.StoreOffers.Count > 0)
+            {
+                return 2;
+            }
+
+            return availability.CraftHints.Any(craft => craft.CraftableByAnyone || craft.Crafters.Count > 0)
+                ? 1
+                : 0;
         }
 
         private static double DuplicateFactor(HousingFurnitureGroup group, int existingTypeCount)

@@ -59,7 +59,7 @@ namespace EcoHousingAdvisor.Domain
             var normalizedPageSize = pageSize < 1 ? 5 : pageSize;
             var matches = groups
                 .Where(group => Contains(group.Category, category))
-                .Select(group => new HousingSuggestion(group, availability.ForItem(group.Items[0].ItemTypeName)))
+                .Select(group => SelectAvailableSuggestion(group, availability))
                 .Where(suggestion => suggestion.Availability.IsAvailable)
                 .OrderByDescending(suggestion => suggestion.Group.BaseValue)
                 .ThenBy(suggestion => suggestion.Group.TypeForRoomLimit, StringComparer.OrdinalIgnoreCase)
@@ -84,6 +84,45 @@ namespace EcoHousingAdvisor.Domain
         {
             return string.IsNullOrWhiteSpace(search)
                 || (value != null && value.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private static HousingSuggestion SelectAvailableSuggestion(
+            HousingFurnitureGroup group,
+            HousingAvailabilitySnapshot availability)
+        {
+            if (group.Items.Count <= 1)
+            {
+                return new HousingSuggestion(group, availability.ForItem(group.Items[0].ItemTypeName));
+            }
+
+            var orderedItems = group.Items
+                .OrderByDescending(item => AvailabilityPriority(availability.ForItem(item.ItemTypeName)))
+                .ThenBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            var orderedGroup = new HousingFurnitureGroup(
+                group.Category,
+                group.TypeForRoomLimit,
+                group.BaseValue,
+                group.DiminishingReturnMultiplier,
+                orderedItems);
+            return new HousingSuggestion(orderedGroup, availability.ForItem(orderedItems[0].ItemTypeName));
+        }
+
+        private static int AvailabilityPriority(HousingItemAvailability availability)
+        {
+            if (availability.OwnedLocations.Count > 0)
+            {
+                return 3;
+            }
+
+            if (availability.StoreOffers.Count > 0)
+            {
+                return 2;
+            }
+
+            return availability.CraftHints.Any(craft => craft.CraftableByAnyone || craft.Crafters.Count > 0)
+                ? 1
+                : 0;
         }
     }
 }
