@@ -387,13 +387,13 @@ public static class HousingAdvisorDomainTests
         var advice = new HousingPropertyAdviceEngine().BuildAdvice(property, groups, allAvailable, 1, 3);
         AssertEqual(1, advice.Rooms.Count, "advice room count");
         AssertEqual("Salon", advice.Rooms[0].Room.RoomName, "weakest room");
-        AssertContains("Big Painting", advice.Rooms[0].Additions[0].Group.Items[0].DisplayName);
+        AssertContains("Small Couch", advice.Rooms[0].Additions[0].Group.Items[0].DisplayName);
         AssertEqual(3.7, advice.Rooms[0].Additions[0].EstimatedGain, "soft cap bounded gain");
         AssertEqual("before soft cap", advice.Rooms[0].Additions[0].CapNote, "soft cap note");
 
         var output = new AdvisorTextRenderer().RenderPropertyValue(property, groups, allAvailable);
         AssertContains("Salon 6.3 XP/day:", output);
-        AssertContains("Big Painting in Salon", output);
+        AssertContains("Small Couch in Salon", output);
         AssertContains("before soft cap", output);
 
         var availability = new HousingAvailabilitySnapshot(new Dictionary<string, HousingItemAvailability>

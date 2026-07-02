@@ -55,7 +55,7 @@ These commands are diagnostic/admin tools:
 /housingadvisor harooms
 /housingadvisor haroom Bedroom
 /housingadvisor haitem trophy
-/housingadvisor haarules
+/housingadvisor harules
 /housingadvisor hadebug
 /housingadvisor harefresh
 /housingadvisor uistatus
@@ -66,7 +66,7 @@ Notes:
 - `ha*` command names avoid collisions with Eco 0.13 built-in command keys.
 - Chat output is plain text. Rich links are reserved for Eco tooltips.
 - Commands may expose raw runtime/readability details and should not be treated as the final UX.
-- `haarules` audits the advisor's copied housing rule table against Eco runtime/source rules and should be run after Eco updates.
+- `harules` audits the advisor's copied housing rule table against Eco runtime/source rules and should be run after Eco updates.
 
 ## Installation
 

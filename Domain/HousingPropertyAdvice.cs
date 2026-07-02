@@ -295,7 +295,8 @@ namespace EcoHousingAdvisor.Domain
         {
             if (room.CategoryValues.Count == 0 || string.IsNullOrWhiteSpace(category))
             {
-                return CopyRoomWithValueAndCategories(room, (room.Value ?? 0) + roomGain, room.CategoryValues);
+                var fallbackCategories = BuildFallbackCategoryValues(room, category, roomGain);
+                return CopyRoomWithValueAndCategories(room, EstimateRoomFinalValue(room, fallbackCategories), fallbackCategories);
             }
 
             var values = new Dictionary<string, double>(room.CategoryValues, StringComparer.OrdinalIgnoreCase);
@@ -303,6 +304,31 @@ namespace EcoHousingAdvisor.Domain
                 ? existing + roomGain
                 : roomGain;
             return CopyRoomWithValueAndCategories(room, EstimateRoomFinalValue(room, values), values);
+        }
+
+        private static IReadOnlyDictionary<string, double> BuildFallbackCategoryValues(
+            HousingPropertyRoomValue room,
+            string addedCategory,
+            double addedValue)
+        {
+            var values = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            foreach (var group in room.Objects
+                .Where(item => !string.IsNullOrWhiteSpace(item.Category))
+                .GroupBy(item => HousingRoomRules.NormalizeRoomName(item.Category), StringComparer.OrdinalIgnoreCase))
+            {
+                values[group.Key] = group.Sum(item => item.EstimatedContribution ?? item.BaseValue ?? 0);
+            }
+
+            var primary = HousingRoomRules.NormalizeRoomName(room.Category ?? room.RoomName);
+            if (values.Count == 0)
+            {
+                values[primary] = room.Value ?? 0;
+            }
+
+            values[addedCategory] = values.TryGetValue(addedCategory, out var existing)
+                ? existing + addedValue
+                : addedValue;
+            return values;
         }
 
         private static HousingPropertyRoomValue CopyRoomWithValueAndCategories(
