@@ -265,8 +265,8 @@ namespace EcoHousingAdvisor.EcoRuntime
 
                 var typeLimit = ReadTypeForRoomLimit(item);
                 var duplicateMultiplier = TryReadDouble(homeValue, "DiminishingReturnMultiplier");
-                var baseValue = TryReadDouble(item, "FurnishingValue")
-                    ?? TryReadDouble(homeValue, "BaseValue");
+                var baseValue = TryReadDouble(homeValue, "BaseValue")
+                    ?? TryReadDouble(item, "FurnishingValue");
                 double? contribution = EstimateFurnitureContribution(item, homeValue, typeCounts);
 
                 yield return new HousingPropertyRoomObjectValue(

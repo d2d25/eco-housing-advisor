@@ -54,7 +54,7 @@ namespace Eco.Mods.TechTree
             return sb.ToLocString();
         }
 
-        public static LocString RenderPropertyTooltip(HousingPropertyAdvice advice)
+        public static LocString RenderPropertyTooltip(HousingPropertyAdvice advice, HousingPropertyValueSnapshot property = null)
         {
             var entries = advice.NewRooms
                 .SelectMany(room => room.Additions.Select(addition => new TooltipEntry(room.Room.RoomName, room.Room.Category, room.Room.RoomCategoryLink, true, addition)))
@@ -63,33 +63,95 @@ namespace Eco.Mods.TechTree
                 .Take(3)
                 .ToArray();
 
-            if (entries.Length == 0)
+            var reactivations = ReactivationEntries(property).Take(3).ToArray();
+            if (entries.Length == 0 && reactivations.Length == 0)
             {
                 return Localizer.DoStr("No useful available housing upgrade found.").Color("#C0C0C0");
             }
 
             var sb = new LocStringBuilder();
-            sb.AppendLine(new LocString(Text.ColorUnity(
-                Color.Yellow.UInt,
-                TextLoc.SizeLoc(0.8f, FormattableStringFactory.Create("Best useful housing upgrades available to you:")).Italic())));
-
-            foreach (var entry in entries)
+            if (reactivations.Length > 0)
             {
-                var item = entry.Addition.Group.Items[0];
-                var itemLink = ItemLink(item);
-                var gain = PositiveGain(entry.Addition.EstimatedGain);
-                var room = PlacementLink(entry);
-                var places = AvailabilityLinks(entry.Addition.Availability);
+                sb.AppendLine(new LocString(Text.ColorUnity(
+                    Color.Yellow.UInt,
+                    TextLoc.SizeLoc(0.8f, FormattableStringFactory.Create("Reactivate these first:")).Italic())));
+                foreach (var entry in reactivations)
+                {
+                    sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
+                        "{0} in {1}: {2}, can restore up to {3} XP/day",
+                        Link(entry.Object.ObjectLink, entry.Object.DisplayName),
+                        Link(entry.Room.RoomCategoryLink, entry.Room.RoomName ?? entry.Room.Category),
+                        ReactivationHint(entry.Object),
+                        PositiveGain(ReactivationGain(entry.Object)))));
+                }
+            }
 
-                sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
-                    "{0} for {1} will provide you {2} XP/day and can be found here: {3}",
-                    itemLink,
-                    room,
-                    gain,
-                    places)));
+            if (entries.Length > 0)
+            {
+                if (reactivations.Length > 0)
+                {
+                    sb.AppendLine(LocString.Empty);
+                }
+
+                sb.AppendLine(new LocString(Text.ColorUnity(
+                    Color.Yellow.UInt,
+                    TextLoc.SizeLoc(0.8f, FormattableStringFactory.Create("Best useful housing upgrades available to you:")).Italic())));
+
+                foreach (var entry in entries)
+                {
+                    var item = entry.Addition.Group.Items[0];
+                    var itemLink = ItemLink(item);
+                    var gain = PositiveGain(entry.Addition.EstimatedGain);
+                    var room = PlacementLink(entry);
+                    var places = AvailabilityLinks(entry.Addition.Availability);
+
+                    sb.AppendLine(Localizer.Do(FormattableStringFactory.Create(
+                        "{0} for {1} will provide you {2} XP/day and can be found here: {3}",
+                        itemLink,
+                        room,
+                        gain,
+                        places)));
+                }
             }
 
             return sb.ToLocString();
+        }
+
+        private static IEnumerable<ReactivationEntry> ReactivationEntries(HousingPropertyValueSnapshot property)
+        {
+            return property?.Rooms == null
+                ? Enumerable.Empty<ReactivationEntry>()
+                : property.Rooms
+                    .SelectMany(room => room.Objects.Select(item => new ReactivationEntry(room, item)))
+                    .Where(entry => ReactivationGain(entry.Object) > 0)
+                    .OrderByDescending(entry => ReactivationGain(entry.Object))
+                    .ThenBy(entry => entry.Object.DisplayName, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static double ReactivationGain(HousingPropertyRoomObjectValue item)
+        {
+            var baseValue = item.BaseValue ?? 0;
+            var contribution = item.EstimatedContribution ?? 0;
+            return baseValue > 0 && contribution <= 0
+                ? baseValue
+                : 0;
+        }
+
+        private static LocString ReactivationHint(HousingPropertyRoomObjectValue item)
+        {
+            var name = (item.DisplayName ?? string.Empty) + " " + (item.TypeForRoomLimit ?? string.Empty);
+            if (name.IndexOf("Torch", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return Localizer.DoStr("reload/add a torch").Color("#7CFF4F");
+            }
+
+            if (name.IndexOf("Fireplace", StringComparison.OrdinalIgnoreCase) >= 0
+                || name.IndexOf("Hearth", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return Localizer.DoStr("add fuel").Color("#7CFF4F");
+            }
+
+            return Localizer.DoStr("finish setup or refill").Color("#7CFF4F");
         }
 
         private static LocString ItemLink(HousingFurnitureItem item)
@@ -550,6 +612,19 @@ namespace Eco.Mods.TechTree
             public bool IsNewRoom { get; }
 
             public HousingRoomAdditionAdvice Addition { get; }
+        }
+
+        private sealed class ReactivationEntry
+        {
+            public ReactivationEntry(HousingPropertyRoomValue room, HousingPropertyRoomObjectValue item)
+            {
+                this.Room = room;
+                this.Object = item;
+            }
+
+            public HousingPropertyRoomValue Room { get; }
+
+            public HousingPropertyRoomObjectValue Object { get; }
         }
     }
 }

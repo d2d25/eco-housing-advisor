@@ -374,6 +374,7 @@ namespace EcoHousingAdvisor.Presentation
 
             if (snapshot.Rooms.Count > 0)
             {
+                AddReactivationAdvice(lines, snapshot);
                 lines.Add(string.Format(
                     CultureInfo.InvariantCulture,
                     "Best useful additions ({0} residence rooms):",
@@ -445,6 +446,59 @@ namespace EcoHousingAdvisor.Presentation
 
             lines.Add("Architecture/culture multipliers are already reflected by Eco totals, not reapplied to suggestions.");
             return string.Join(Environment.NewLine, lines);
+        }
+
+        private static void AddReactivationAdvice(ICollection<string> lines, HousingPropertyValueSnapshot snapshot)
+        {
+            var entries = snapshot.Rooms
+                .SelectMany(room => room.Objects.Select(item => new { Room = room, Object = item }))
+                .Where(entry => ReactivationGain(entry.Object) > 0)
+                .OrderByDescending(entry => ReactivationGain(entry.Object))
+                .ThenBy(entry => entry.Object.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Take(3)
+                .ToArray();
+            if (entries.Length == 0)
+            {
+                return;
+            }
+
+            lines.Add("Reactivate these first:");
+            foreach (var entry in entries)
+            {
+                lines.Add(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "- {0} in {1}: {2}, can restore up to +{3} XP/day",
+                    entry.Object.DisplayName,
+                    entry.Room.RoomName,
+                    ReactivationHint(entry.Object),
+                    HousingFurnitureFormatter.FormatBaseValue(ReactivationGain(entry.Object))));
+            }
+        }
+
+        private static double ReactivationGain(HousingPropertyRoomObjectValue item)
+        {
+            var baseValue = item.BaseValue ?? 0;
+            var contribution = item.EstimatedContribution ?? 0;
+            return baseValue > 0 && contribution <= 0
+                ? baseValue
+                : 0;
+        }
+
+        private static string ReactivationHint(HousingPropertyRoomObjectValue item)
+        {
+            var name = (item.DisplayName ?? string.Empty) + " " + (item.TypeForRoomLimit ?? string.Empty);
+            if (name.IndexOf("Torch", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "reload/add a torch";
+            }
+
+            if (name.IndexOf("Fireplace", StringComparison.OrdinalIgnoreCase) >= 0
+                || name.IndexOf("Hearth", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "add fuel";
+            }
+
+            return "finish setup or refill";
         }
 
         public string RenderPropertyTooltip(
