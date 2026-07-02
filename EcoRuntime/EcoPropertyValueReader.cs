@@ -200,18 +200,24 @@ namespace EcoHousingAdvisor.EcoRuntime
         private static IReadOnlyDictionary<string, double> ReadCategoryValues(object roomSource)
         {
             var values = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            var typeCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             foreach (var item in ReadFurnitureLikeObjects(roomSource).Take(80))
             {
-                var homeValue = ReadHomeValue(item);
-                var category = NormalizeCategory(ReadDisplayString(ReadMember(homeValue, "Category")));
-                var value = TryReadDouble(item, "FurnishingValue")
-                    ?? TryReadDouble(homeValue, "BaseValue");
-                if (string.IsNullOrWhiteSpace(category) || value == null)
+                if (item == null || !seen.Add(item))
                 {
                     continue;
                 }
 
-                values[category] = values.TryGetValue(category, out var existing) ? existing + value.Value : value.Value;
+                var homeValue = ReadHomeValue(item);
+                var category = NormalizeCategory(ReadDisplayString(ReadMember(homeValue, "Category")));
+                var contribution = EstimateFurnitureContribution(item, homeValue, typeCounts);
+                if (string.IsNullOrWhiteSpace(category) || contribution == null)
+                {
+                    continue;
+                }
+
+                values[category] = values.TryGetValue(category, out var existing) ? existing + contribution.Value : contribution.Value;
             }
 
             return values;
@@ -258,20 +264,10 @@ namespace EcoHousingAdvisor.EcoRuntime
                 }
 
                 var typeLimit = ReadTypeForRoomLimit(item);
-                var count = string.IsNullOrWhiteSpace(typeLimit)
-                    ? 0
-                    : typeCounts.TryGetValue(typeLimit, out var existing) ? existing : 0;
-                if (!string.IsNullOrWhiteSpace(typeLimit))
-                {
-                    typeCounts[typeLimit] = count + 1;
-                }
-
                 var duplicateMultiplier = TryReadDouble(homeValue, "DiminishingReturnMultiplier");
                 var baseValue = TryReadDouble(item, "FurnishingValue")
                     ?? TryReadDouble(homeValue, "BaseValue");
-                double? contribution = baseValue == null
-                    ? (double?)null
-                    : baseValue.Value * Math.Pow(duplicateMultiplier ?? 1, count);
+                double? contribution = EstimateFurnitureContribution(item, homeValue, typeCounts);
 
                 yield return new HousingPropertyRoomObjectValue(
                     ReadObjectDisplayName(item),
@@ -284,6 +280,31 @@ namespace EcoHousingAdvisor.EcoRuntime
                     true,
                     ReadObjectLink(item));
             }
+        }
+
+        private static double? EstimateFurnitureContribution(
+            object item,
+            object homeValue,
+            IDictionary<string, int> typeCounts)
+        {
+            var typeLimit = ReadTypeForRoomLimit(item);
+            var count = string.IsNullOrWhiteSpace(typeLimit)
+                ? 0
+                : typeCounts.TryGetValue(typeLimit, out var existing) ? existing : 0;
+            if (!string.IsNullOrWhiteSpace(typeLimit))
+            {
+                typeCounts[typeLimit] = count + 1;
+            }
+
+            var baseValue = TryReadDouble(item, "FurnishingValue")
+                ?? TryReadDouble(homeValue, "BaseValue");
+            if (baseValue == null)
+            {
+                return null;
+            }
+
+            var duplicateMultiplier = TryReadDouble(homeValue, "DiminishingReturnMultiplier") ?? 1;
+            return baseValue.Value * Math.Pow(duplicateMultiplier, count);
         }
 
         private static IEnumerable<object> ReadFurnitureLikeObjects(object roomSource)

@@ -55,6 +55,7 @@ These commands are diagnostic/admin tools:
 /housingadvisor harooms
 /housingadvisor haroom Bedroom
 /housingadvisor haitem trophy
+/housingadvisor hacalc trophy
 /housingadvisor harules
 /housingadvisor hadebug
 /housingadvisor harefresh

@@ -92,6 +92,7 @@ namespace EcoHousingAdvisor.Presentation
                 "/housingadvisor harooms - admin active residence room list",
                 "/housingadvisor haroom Bedroom - admin room-type detail",
                 "/housingadvisor haitem trophy - admin item/category cap diagnostic",
+                "/housingadvisor hacalc trophy - admin item calculation breakdown",
                 "/housingadvisor harules - admin Eco housing rule drift audit",
                 "/housingadvisor uistatus - admin tooltip status",
                 "/housingadvisor hahelp - show this admin help",
@@ -205,6 +206,26 @@ namespace EcoHousingAdvisor.Presentation
                         FormatNullable(existingSupport),
                         HousingFurnitureFormatter.FormatMultiplier(capPercent),
                         HousingFurnitureFormatter.FormatBaseValue(remaining)));
+
+                    var categories = room.CategoryValues.Count == 0
+                        ? "none"
+                        : string.Join(", ", room.CategoryValues
+                            .OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase)
+                            .Select(entry => entry.Key + "=" + HousingFurnitureFormatter.FormatBaseValue(entry.Value)));
+                    lines.Add("    category values: " + categories);
+
+                    foreach (var item in room.Objects.Take(10))
+                    {
+                        lines.Add(string.Format(
+                            CultureInfo.InvariantCulture,
+                            "    object {0}: category {1}, type {2}, base {3}, dup {4}, contribution {5}",
+                            item.DisplayName,
+                            string.IsNullOrWhiteSpace(item.Category) ? "?" : item.Category,
+                            string.IsNullOrWhiteSpace(item.TypeForRoomLimit) ? "?" : item.TypeForRoomLimit,
+                            FormatNullable(item.BaseValue),
+                            FormatNullable(item.DuplicateMultiplier),
+                            FormatNullable(item.EstimatedContribution)));
+                    }
                 }
             }
 
